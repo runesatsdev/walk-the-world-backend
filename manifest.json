@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Xeet Extension",
+  "version": "1.0.0",
+  "description": "Chrome extension for Xeet creator scoring and user engagement",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "identity",
+    "scripting",
+    "tabs",
+    "webNavigation",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://x.com/*",
+    "https://api.xeet.ai/*"
+  ],
+  "background": {
+    "service_worker": "src/background.ts"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://x.com/*"],
+      "js": ["src/content.ts"],
+      "css": ["src/content.css"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Xeet Extension"
+  },
+  "icons": {
+    "16": "public/icon16.png",
+    "48": "public/icon48.png",
+    "128": "public/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["src/injected.ts"],
+      "matches": ["https://x.com/*"]
+    }
+  ]
+}
