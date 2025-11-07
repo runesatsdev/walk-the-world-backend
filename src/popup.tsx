@@ -36,7 +36,12 @@ const Popup: React.FC = () => {
   const initializePopup = async () => {
     try {
       // Get auth status
-      const authResponse = await chrome.runtime.sendMessage({ type: 'AUTH_STATUS' });
+      // const authResponse = await chrome.runtime.sendMessage('dmkcmmakeladpkaeiahekcmcbkjkfdph', { type: 'AUTH_STATUS' });
+      const authResponse = {
+        isAuthenticated: false,
+        userId: '12345'
+      };
+      
       setAuthStatus(authResponse);
 
       if (authResponse.isAuthenticated) {
@@ -44,8 +49,8 @@ const Popup: React.FC = () => {
         await loadUserData();
       }
     } catch (err) {
-      setError('Failed to initialize extension');
       console.error('Popup initialization error:', err);
+      setError('Failed to initialize extension');
     } finally {
       setLoading(false);
     }
@@ -63,19 +68,26 @@ const Popup: React.FC = () => {
   };
 
   const handleAuth = async () => {
-    try {
-      setLoading(true);
-      const result = await chrome.runtime.sendMessage({ type: 'AUTHENTICATE' });
-      if (result.success) {
-        setAuthStatus(result.authStatus);
-        await loadUserData();
-      }
-    } catch (err) {
-      setError('Authentication failed');
-      console.error('Auth error:', err);
-    } finally {
-      setLoading(false);
-    }
+    // try {
+    //   setLoading(true);
+    //   const result = await chrome.runtime.sendMessage({ type: 'AUTHENTICATE' });
+    //   if (result.success) {
+    //     setAuthStatus(result.authStatus);
+    //     await loadUserData();
+    //   }
+    // } catch (err) {
+    //   setError('Authentication failed');
+    //   console.error('Auth error:', err);
+    // } finally {
+    //   setLoading(false);
+    // }
+    chrome.windows.create({
+      url: chrome.runtime.getURL('auth.html'),
+      type: 'popup',
+      width: 400,
+      height: 600
+    });
+
   };
 
   const handleSettingToggle = async (setting: keyof Settings) => {

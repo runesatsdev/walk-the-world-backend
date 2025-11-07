@@ -74,7 +74,7 @@ export class TelemetryService {
 
   private startFlushInterval(): void {
     // Flush every 5 minutes
-    this.flushInterval = window.setInterval(() => {
+    this.flushInterval = self.setInterval(() => {
       this.flush();
     }, 5 * 60 * 1000);
   }

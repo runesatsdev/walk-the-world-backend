@@ -14,16 +14,18 @@
   ],
   "host_permissions": [
     "https://x.com/*",
-    "https://api.xeet.ai/*"
+    "https://api.xeet.ai/*",
+    "https://auth.privy.io/*"
   ],
   "background": {
-    "service_worker": "src/background.ts"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
       "matches": ["https://x.com/*"],
-      "js": ["src/content.ts"],
-      "css": ["src/content.css"]
+      "js": ["content.js"],
+      "css": ["content.css"]
     }
   ],
   "action": {
@@ -31,13 +33,19 @@
     "default_title": "Xeet Extension"
   },
   "icons": {
-    "16": "public/icon16.png",
-    "48": "public/icon48.png",
-    "128": "public/icon128.png"
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; frame-ancestors 'none';"
+  },
+  "externally_connectable": {
+    "matches": ["https://x.com/*", "https://api.xeet.ai/*"]
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/injected.ts"],
+      "resources": ["content.js", "content.css"],
       "matches": ["https://x.com/*"]
     }
   ]
