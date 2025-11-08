@@ -83,9 +83,10 @@ const Popup: React.FC = () => {
     // }
     chrome.windows.create({
       url: chrome.runtime.getURL('auth.html'),
-      type: 'popup',
-      width: 400,
-      height: 600
+      type: 'panel',
+      width: 380,
+      height: 400,
+      left: Math.round((screen.width - 380) / 2),
     });
 
   };
