@@ -179,7 +179,7 @@ const CardList = () => {
     }
 
     return (
-        <div className="w-full md:w-[400px] bg-white flex flex-col border-l border-[#E2E3F0] p-4 h-[calc(100vh-70px)] overflow-y-auto mt-[70px]">
+        <div className="w-full md:w-[400px] bg-white flex flex-col border-l border-[#E2E3F0] p-4 h-[calc(100vh-120px)] overflow-y-auto">
             {contentItems.length ? contentItems.map((item) => (
                 <MiniCard
                     key={item.id}

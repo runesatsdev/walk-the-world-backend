@@ -6,9 +6,14 @@ import { FullScreenLoader } from "./components/ui/fullscreen-loader";
 import { ArrowLeftIcon } from "@heroicons/react/16/solid";
 // import UserObject from "./components/sections/user-object";
 import CardList from "./components/sections/card-list";
+import SpacesTracking from "./components/sections/spaces-tracking";
+import ReportFlag from "./components/sections/report-flag";
+import { useState } from "react";
 
 function App() {
   const { ready, authenticated, logout, login, user } = usePrivy();
+  const [activeTab, setActiveTab] = useState<'signals' | 'spaces' | 'report'>('signals');
+
   if (!ready) {
     return <FullScreenLoader />;
   }
@@ -17,21 +22,46 @@ function App() {
     <div className="bg-white md:max-h-[100vh]">
       {/* <Header /> */}
       {authenticated ? (
-        <section className="w-full flex flex-col md:flex-row md:h-[calc(100vh)]">
-          <div className="flex h-fit p-4 pl-4 justify-between fixed top-0 left-0 w-full bg-black border-[#E2E3F0] md:static z-10 ">
-            <div className=" flex flex-row gap-2">
-              <img src={`${user?.twitter?.profilePictureUrl}`} alt="User Avatar" className="h-12 w-12 rounded-full" />
-              <div className="flex flex-col text-white">
-                <span className="font-semibold">{user?.twitter?.name}</span>
-                <span className="text-gray-500"> @{user?.twitter?.username}</span>
+        <section className="w-full flex flex-col">
+          <div className="flex flex-col h-fit justify-between fixed top-0 left-0 w-full border-[#E2E3F0] md:static z-10 ">
+            <div className=" flex p-4 justify-between w-full bg-black">
+              <div className=" flex flex-row gap-2">
+                <img src={`${user?.twitter?.profilePictureUrl}`} alt="User Avatar" className="h-12 w-12 rounded-full" />
+                <div className="flex flex-col text-white">
+                  <span className="font-semibold">{user?.twitter?.name}</span>
+                  <span className="text-gray-500"> @{user?.twitter?.username}</span>
+                </div>
               </div>
+              <button className="button" onClick={logout}>
+                <ArrowLeftIcon className="h-4 w-4" strokeWidth={2} /> Logout
+              </button>
             </div>
-            <button className="button" onClick={logout}>
-              <ArrowLeftIcon className="h-4 w-4" strokeWidth={2} /> Logout
-            </button>
+            {/* Tab Navigation */}
+            <div className="flex border-b border-[#E2E3F0] h-fit justify-between">
+              <button
+                className={`px-3 py-2 text-sm font-medium whitespace-nowrap ${activeTab === 'signals' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                onClick={() => setActiveTab('signals')}
+              >
+                Signals
+              </button>
+              <button
+                className={`px-3 py-2 text-sm font-medium whitespace-nowrap ${activeTab === 'spaces' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                onClick={() => setActiveTab('spaces')}
+              >
+                Spaces Tracking
+              </button>
+              <button
+                className={`px-3 py-2 text-sm font-medium whitespace-nowrap ${activeTab === 'report' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                onClick={() => setActiveTab('report')}
+              >
+                Report & Flag
+              </button>
+            </div>
+            {/* Tab Content */}
+            {activeTab === 'signals' && <CardList />}
+            {activeTab === 'spaces' && <SpacesTracking />}
+            {activeTab === 'report' && <ReportFlag />}
           </div>
-          {/* <UserObject /> */}
-          <CardList />
         </section>
       ) : (
         <section className="w-full flex flex-row justify-center items-center h-[calc(100vh)] relative">

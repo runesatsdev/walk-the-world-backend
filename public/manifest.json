@@ -3,8 +3,18 @@
   "name": "Xeet Extension",
   "version": "1.0",
   "description": "Chrome extension with Xeet",
-  "permissions": ["identity"],
-  "host_permissions": ["https://auth.privy.io/*"],
+  "permissions": ["identity", "activeTab", "tabs", "storage", "scripting"],
+  "host_permissions": ["https://auth.privy.io/*", "https://x.com/*", "https://twitter.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "index.html",
     "default_title": "Xeet Extension",
