@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/background.ts","./src/content.ts","./src/main.tsx","./src/popup.tsx","./src/auth/authcomponent.tsx","./src/services/api.ts","./src/services/auth.ts","./src/services/feedback.ts","./src/services/spaces.ts","./src/services/telemetry.ts"],"version":"5.9.3"}

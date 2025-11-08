@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Xeet Extension",
+  "version": "1.0",
+  "description": "Chrome extension with Xeet",
+  "permissions": ["identity"],
+  "host_permissions": ["https://auth.privy.io/*"],
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Xeet Extension",
+    "default_icon": "logo192.png"
+  },
+  "icons": {
+    "16": "logo192.png",
+    "48": "logo512.png",
+    "128": "logo512.png"
+  },
+  "options_page": "options.html",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; frame-ancestors 'none';"
+  }
+}
+
+
+
