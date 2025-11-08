@@ -4,7 +4,7 @@ import { ToastContainer } from "react-toastify";
 import { FullScreenLoader } from "./components/ui/fullscreen-loader";
 // import { Header } from "./components/ui/header";
 import { ArrowLeftIcon } from "@heroicons/react/16/solid";
-import UserObject from "./components/sections/user-object";
+// import UserObject from "./components/sections/user-object";
 import CardList from "./components/sections/card-list";
 
 function App() {
@@ -14,14 +14,14 @@ function App() {
   }
 
   return (
-    <div className="bg-[#E0E7FF66] md:max-h-[100vh] md:overflow-hidden">
+    <div className="bg-white md:max-h-[100vh]">
       {/* <Header /> */}
       {authenticated ? (
         <section className="w-full flex flex-col md:flex-row md:h-[calc(100vh)]">
-          <div className="flex overflow-y-auto h-full p-4 pl-4 justify-between">
-            <div className=" flex flex-row ">
+          <div className="flex h-fit p-4 pl-4 justify-between fixed top-0 left-0 w-full bg-black border-[#E2E3F0] md:static z-10 ">
+            <div className=" flex flex-row gap-2">
               <img src={`${user?.twitter?.profilePictureUrl}`} alt="User Avatar" className="h-12 w-12 rounded-full" />
-              <div className="flex flex-col">
+              <div className="flex flex-col text-white">
                 <span className="font-semibold">{user?.twitter?.name}</span>
                 <span className="text-gray-500"> @{user?.twitter?.username}</span>
               </div>

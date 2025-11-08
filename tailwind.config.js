@@ -1,3 +1,5 @@
+const { text } = require('stream/consumers');
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -9,7 +11,7 @@ module.exports = {
       fontFamily: {
         sans: ["var(--font-inter)", "Arial", "Helvetica", "sans-serif"],
         "abc-favorit": ["var(--font-abc-favorit)", "Arial", "Helvetica", "sans-serif"],
-      },
+      }
     },
   },
   plugins: [],
