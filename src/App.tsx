@@ -5,6 +5,7 @@ import { FullScreenLoader } from "./components/ui/fullscreen-loader";
 // import { Header } from "./components/ui/header";
 import { ArrowLeftIcon } from "@heroicons/react/16/solid";
 import UserObject from "./components/sections/user-object";
+import CardList from "./components/sections/card-list";
 
 function App() {
   const { ready, authenticated, logout, login, user } = usePrivy();
@@ -29,7 +30,8 @@ function App() {
               <ArrowLeftIcon className="h-4 w-4" strokeWidth={2} /> Logout
             </button>
           </div>
-          <UserObject />
+          {/* <UserObject /> */}
+          <CardList />
         </section>
       ) : (
         <section className="w-full flex flex-row justify-center items-center h-[calc(100vh)] relative">
