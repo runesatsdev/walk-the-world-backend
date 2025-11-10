@@ -13,9 +13,10 @@
 
   // Handle messages from content script
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log("message received in background.js-->>>", message);
     switch (message.type) {
       case 'SPACE_JOINED':
-        handleSpaceJoined(message.data);
+        handleSpaceJoined(message.data, sender);
         break;
       case 'SPACE_LEFT':
         handleSpaceLeft(message.data);
@@ -35,7 +36,7 @@
     }
   });
 
-  function handleSpaceJoined(spaceData) {
+  function handleSpaceJoined(spaceData, sender) {
     activeSpaces[spaceData.id] = {
       ...spaceData,
       startTime: new Date(spaceData.startTime),
@@ -44,14 +45,20 @@
 
     saveSpacesData();
 
-    // Notify popup about the update
-    chrome.runtime.sendMessage({
-      type: 'SPACE_SESSION_UPDATE',
-      data: {
-        ...spaceData,
-        completed: false
-      }
-    });
+    // Notify popup about the update (only if popup is open)
+    try {
+      chrome.runtime.sendMessage({
+        type: 'SPACE_SESSION_UPDATE',
+        data: {
+          ...spaceData,
+          completed: false
+        }
+      }).catch(() => {
+        // Ignore errors when popup is not open
+      });
+    } catch (error) {
+      // Ignore connection errors
+    }
   }
 
   function handleSpaceLeft(spaceData) {
@@ -74,14 +81,20 @@
         grantXeetReward(completedSpace);
       }
 
-      // Notify popup about the update
-      chrome.runtime.sendMessage({
-        type: 'SPACE_SESSION_UPDATE',
-        data: {
-          ...completedSpace,
-          completed: true
-        }
-      });
+      // Notify popup about the update (only if popup is open)
+      try {
+        chrome.runtime.sendMessage({
+          type: 'SPACE_SESSION_UPDATE',
+          data: {
+            ...completedSpace,
+            completed: true
+          }
+        }).catch(() => {
+          // Ignore errors when popup is not open
+        });
+      } catch (error) {
+        // Ignore connection errors
+      }
     }
   }
 

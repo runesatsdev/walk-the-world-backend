@@ -10,7 +10,8 @@
   // Function to detect if we're in a Space
   function detectSpace() {
     // Specific selectors based on actual X Spaces DOM structure
-    const spaceDock = document.querySelector('[data-testid="SpaceDockExpanded"]');
+    const spaceDockExpanded = document.querySelector('[data-testid="SpaceDockExpanded"]');
+    const spaceDock = document.querySelector('[data-testid="SpaceDock"]');
     // const leaveButton = document.querySelector('button span span span:contains("Leave")');
     const recIndicator = document.querySelector('[aria-label="Recording active"]');
     const spaceTitleElement = document.querySelector('[data-testid="tweetText"]');
@@ -20,7 +21,7 @@
     let spaceHost = null;
 
     // Primary detection: SpaceDockExpanded indicates we're in a space
-    if (spaceDock) {
+    if (spaceDock || spaceDockExpanded) {
       spaceFound = true;
       console.log('Space detected via SpaceDockExpanded');
 
@@ -29,8 +30,9 @@
         spaceTitle = spaceTitleElement.textContent?.trim();
       }
 
-      // Extract host if available (may need additional logic based on full DOM)
+      // Extract host using enhanced logic
       spaceHost = extractHost();
+      console.log('Extracted host:', spaceHost);
     }
 
     // Additional confirmation: Leave button indicates active participation
@@ -139,12 +141,77 @@
   }
 
   function extractHost() {
-    // Enhanced host extraction with multiple selectors
+    // Look for the specific DOM structure with "Host" label and user info
+    // Based on the provided DOM structure, find spans with "Host" text
+    const hostLabelSpans = document.querySelectorAll('span');
+    for (const span of hostLabelSpans) {
+      if (span.textContent?.trim() === 'Host') {
+        // Found the "Host" label, now look for the associated user info
+        // The host name should be in a nearby container with user avatar and name
+        const hostContainer = span.closest('div[class*="r-1awozwy r-18u37iz r-1777fci r-bnwqim"]');
+        if (hostContainer) {
+          // Look for the user name in the associated container
+          // The structure has the user avatar and name in a preceding sibling or parent
+          const userInfoContainer = hostContainer.previousElementSibling ||
+                                   hostContainer.parentElement?.previousElementSibling;
+
+          if (userInfoContainer) {
+            // Look for spans containing the user name (typically with emoji and verification)
+            const userNameSpans = userInfoContainer.querySelectorAll('span');
+            for (const nameSpan of userNameSpans) {
+              const text = nameSpan.textContent?.trim();
+              if (text && text.length > 0 && text !== 'Host' && !text.includes('Verified account')) {
+                // For spans with multiple direct child spans (like the username structure), collect only direct children
+                const directChildSpans = Array.from(nameSpan.children).filter(child => child.tagName === 'SPAN');
+                if (directChildSpans.length > 1) {
+                  // Join only direct child span texts to avoid duplication
+                  const fullText = directChildSpans
+                    .map(span => span.textContent?.trim() || '')
+                    .join('')
+                    .trim();
+                  if (fullText && fullText.length > 0) {
+                    // Clean up the username (remove extra spaces)
+                    const cleanName = fullText.replace(/\s+/g, ' ').trim();
+                    console.log('Extracted host name from direct child spans:', cleanName);
+                    return cleanName;
+                  }
+                } else if (directChildSpans.length === 1) {
+                  // Single direct child span
+                  const childText = directChildSpans[0].textContent?.trim();
+                  if (childText && childText.length > 0) {
+                    console.log('Extracted host name from single child span:', childText);
+                    return childText;
+                  }
+                } else {
+                  // No direct child spans, use the span's own text content
+                  const cleanName = text.split(' ')[0].replace(/[^\w\s@]/g, '').trim();
+                  if (cleanName && cleanName.length > 0) {
+                    console.log('Extracted host name from span text:', cleanName);
+                    return cleanName;
+                  }
+                }
+              }
+            }
+
+            // Alternative: look for the href attribute in links within the user container
+            const userLink = userInfoContainer.querySelector('a[href*="/"]');
+            if (userLink) {
+              const username = userLink.getAttribute('href')?.split('/').pop();
+              if (username && username !== 'home') {
+                console.log('Extracted host name from link:', username);
+                return username;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Fallback methods if the specific structure isn't found
     const hostSelectors = [
       '[data-testid="space-host"]',
       '[data-testid="SpaceHost"]',
       '[role="link"][href*="/"]',
-      // Additional potential selectors
       '[data-testid*="host"]',
       '.space-host',
       '[aria-label*="host"]'
@@ -153,9 +220,34 @@
     for (const selector of hostSelectors) {
       const element = document.querySelector(selector);
       if (element) {
-        return element.textContent || element.getAttribute('href')?.split('/').pop() || 'Unknown';
+        const text = element.textContent?.trim();
+        const href = element.getAttribute('href');
+        if (text && text !== 'Host') {
+          return text;
+        }
+        if (href) {
+          const username = href.split('/').pop();
+          if (username && username !== 'home') {
+            return username;
+          }
+        }
       }
     }
+
+    // Last resort: look for any element with user-like content near host indicators
+    const allElements = document.querySelectorAll('[data-testid*="UserAvatar"], a[href*="/"]');
+    for (const element of allElements) {
+      const href = element.getAttribute('href');
+      if (href && href.startsWith('/')) {
+        const username = href.split('/').pop();
+        if (username && username !== 'home' && username.length > 0) {
+          console.log('Extracted host name from fallback:', username);
+          return username;
+        }
+      }
+    }
+
+    console.log('Could not extract host name from DOM');
     return 'Unknown';
   }
 
@@ -167,9 +259,9 @@
       startTime: new Date().toISOString()
     };
     sessionStartTime = Date.now();
-
+    
     // Notify background script (only if chrome.runtime is available and we have the correct extension ID)
-    if (chrome && chrome.runtime && chrome.runtime.sendMessage && chrome.runtime.id === 'kikeofiijkfogeinjcflfklhkbcjjlnl') {
+    if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
       try {
         chrome.runtime.sendMessage({
           type: 'SPACE_JOINED',
@@ -198,7 +290,7 @@
       };
 
       // Notify background script (only if chrome.runtime is available and we have the correct extension ID)
-      if (chrome && chrome.runtime && chrome.runtime.sendMessage && chrome.runtime.id === 'kikeofiijkfogeinjcflfklhkbcjjlnl') {
+      if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
         try {
           chrome.runtime.sendMessage({
             type: 'SPACE_LEFT',
@@ -252,7 +344,7 @@
   window.addEventListener('message', (event) => {
     if (event.data.type === 'XEET_REPORT_CLICK') {
       // Open extension popup or send message to background (only if available and we have the correct extension ID)
-      if (chrome && chrome.runtime && chrome.runtime.sendMessage && chrome.runtime.id === 'kikeofiijkfogeinjcflfklhkbcjjlnl') {
+      if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
         try {
           chrome.runtime.sendMessage({
             type: 'OPEN_REPORT_TAB'

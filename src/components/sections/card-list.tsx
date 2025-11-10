@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import MiniCard from "../reusables/mini-card";
 
-type ContentItem = Post | Account | Space;
+type ContentItem = Post | Account;
 
 interface Post {
     id: string;
@@ -32,22 +32,6 @@ interface Account {
     tweets: number;
 }
 
-interface Space {
-    id: string;
-    type: 'space';
-    title: string;
-    host: string;
-    hostUsername: string;
-    hostProfilePictureUrl: string;
-    spacelink: string;
-    description: string;
-    participantCount: number;
-    startedAt: string;
-    estimatedDuration: number; // in minutes
-    rewardAmount: number; // Xeet reward amount
-    isLive: boolean;
-}
-
 const CardList = () => {
     const [contentItems, setContentItems] = useState<ContentItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -67,18 +51,8 @@ const CardList = () => {
             // Simulate network delay
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            // Fetch available spaces from background script
-            let spacesData: any[] = [];
-            if (chrome?.runtime?.sendMessage) {
-                try {
-                    const response = await new Promise<any>((resolve) => {
-                        chrome.runtime.sendMessage({ type: 'GET_AVAILABLE_SPACES' }, resolve);
-                    });
-                    spacesData = Array.isArray(response) ? response : [];
-                } catch (error) {
-                    console.log('Failed to fetch spaces from background:', error);
-                }
-            }
+            // Spaces are now handled in the dedicated Spaces Tracking tab
+            // Removed space fetching logic from here
 
             // In a real implementation, this would call the Xeet API for posts/accounts
             // const response = await fetch('/api/v1/signals/*');
@@ -115,13 +89,8 @@ const CardList = () => {
                 }
             ];
 
-            // Convert spaces data to ContentItem format and combine
-            const spacesAsContentItems: ContentItem[] = spacesData.map(space => ({
-                ...space,
-                type: 'space' as const
-            }));
-
-            const mockData: ContentItem[] = [...postsAndAccounts, ...spacesAsContentItems];
+            // Only use posts and accounts (spaces are handled in the dedicated Spaces Tracking tab)
+            const mockData: ContentItem[] = [...postsAndAccounts];
 
             // Filter out content that has been rated in the last 24 hours
             const now = Date.now();
@@ -162,18 +131,7 @@ const CardList = () => {
         setContentItems(prevItems => prevItems.filter(item => item.id !== contentId));
     };
 
-    const handleJoinSpace = (spaceId: string, spaceLink: string) => {
-        // Notify background script about space join attempt
-        if (chrome?.runtime?.sendMessage) {
-            chrome.runtime.sendMessage({
-                type: 'SPACE_JOIN_ATTEMPT',
-                data: { spaceId, spaceLink, timestamp: new Date().toISOString() }
-            });
-        }
-
-        // Open space link in new tab
-        window.open(spaceLink, '_blank', 'noopener,noreferrer');
-    };
+    // Removed handleJoinSpace function as spaces are now handled in the dedicated Spaces Tracking tab
 
     if (loading) {
         return (
@@ -213,10 +171,7 @@ const CardList = () => {
                 <MiniCard
                     key={item.id}
                     {...item}
-                    {...(item.type === 'space'
-                        ? { onJoinSpace: () => handleJoinSpace(item.id, item.spacelink) }
-                        : { onFeedbackSubmit: () => handleFeedbackSubmit(item.id) }
-                    )}
+                    onFeedbackSubmit={() => handleFeedbackSubmit(item.id)}
                 />
             )) : (
                 <div className="text-center py-8">

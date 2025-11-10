@@ -283,24 +283,7 @@ const SpacesTracking = () => {
         <div className="space-y-3">
           {availableSpaces.filter(space => space.isLive).map(space => (
             <div key={space.id} className="bg-[#9c63fa] border border-purple-200 rounded-lg p-4">
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center space-x-2">
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 animate-pulse">
-                    🔴 LIVE
-                  </span>
-                </div>
-                <div className="text-right">
-                  <div className="text-green-600 font-semibold text-sm">
-                    +{space.rewardAmount} Xeet
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    reward
-                  </div>
-                </div>
-              </div>
-
               <h4 className="font-semibold text-base mb-1 text-white">{space.title}</h4>
-
               <div className="flex items-center space-x-2 mb-2">
                 <img
                   src={space.hostProfilePictureUrl}
@@ -332,10 +315,10 @@ const SpacesTracking = () => {
                 disabled={trackingSpaceId === space.id}
                 className="w-full bg-white text-black text-sm font-medium py-2 px-4 rounded-lg hover:bg-gray-100 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
-                <svg viewBox="0 0 24 24" aria-hidden="true" className="w-4 h-4" style={{color: 'rgb(15, 20, 25)'}}>
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="w-4 h-4" style={{ color: 'rgb(15, 20, 25)' }}>
                   <g><path d="M21 12L4 2v20l17-10z"></path></g>
                 </svg>
-                {trackingSpaceId === space.id ? '🎯 Tracking for Rewards' : 'Join Space & Earn'}
+                {trackingSpaceId === space.id ? '🎯 Tracking for Rewards' : `Join Space & Earn +${space.rewardAmount} Xeet`}
               </button>
             </div>
           ))}
@@ -379,9 +362,8 @@ const SpacesTracking = () => {
               <div className="flex justify-between items-start mb-1">
                 <div className="font-medium text-sm">{session.title}</div>
                 <div className="text-right">
-                  <div className={`text-xs font-medium ${
-                    session.rewardEarned ? 'text-green-600' : 'text-gray-500'
-                  }`}>
+                  <div className={`text-xs font-medium ${session.rewardEarned ? 'text-green-600' : 'text-gray-500'
+                    }`}>
                     {session.rewardEarned ? `✓ +${session.rewardAmount || 0} Xeet` : 'No reward'}
                   </div>
                 </div>
