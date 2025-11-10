@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import MiniCard from "../reusables/mini-card";
 
-type ContentItem = Post | Account;
+type ContentItem = Post | Account | Space;
 
 interface Post {
     id: string;
@@ -32,6 +32,22 @@ interface Account {
     tweets: number;
 }
 
+interface Space {
+    id: string;
+    type: 'space';
+    title: string;
+    host: string;
+    hostUsername: string;
+    hostProfilePictureUrl: string;
+    spacelink: string;
+    description: string;
+    participantCount: number;
+    startedAt: string;
+    estimatedDuration: number; // in minutes
+    rewardAmount: number; // Xeet reward amount
+    isLive: boolean;
+}
+
 const CardList = () => {
     const [contentItems, setContentItems] = useState<ContentItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -50,12 +66,26 @@ const CardList = () => {
             setLoading(true);
             // Simulate network delay
             await new Promise(resolve => setTimeout(resolve, 1000));
-            // In a real implementation, this would call the seet API
+
+            // Fetch available spaces from background script
+            let spacesData: any[] = [];
+            if (chrome?.runtime?.sendMessage) {
+                try {
+                    const response = await new Promise<any>((resolve) => {
+                        chrome.runtime.sendMessage({ type: 'GET_AVAILABLE_SPACES' }, resolve);
+                    });
+                    spacesData = Array.isArray(response) ? response : [];
+                } catch (error) {
+                    console.log('Failed to fetch spaces from background:', error);
+                }
+            }
+
+            // In a real implementation, this would call the Xeet API for posts/accounts
             // const response = await fetch('/api/v1/signals/*');
             // const data = await response.json();
 
-            // For now, using mock data with mixed post and account types
-            const mockData: ContentItem[] = [
+            // Combine posts/accounts with spaces from background script
+            const postsAndAccounts: ContentItem[] = [
                 {
                     id: "1986975980678725634",
                     type: 'post',
@@ -82,35 +112,16 @@ const CardList = () => {
                     followers: 128000000,
                     following: 128,
                     tweets: 25000,
-                },
-                {
-                    id: "1986958271924547615",
-                    type: 'post',
-                    name: "Samzy",
-                    username: "0xSamzy",
-                    profilePictureUrl: "https://pbs.twimg.com/profile_images/1743547374281064448/lADZQHOc.jpg",
-                    content: "Another sample tweet content.",
-                    tweetlink: "https://x.com/i/web/status/1986958271924547615",
-                    timestamp: "2025-11-08T13:30:00Z",
-                    replies: 8,
-                    reposts: 23,
-                    likes: 67,
-                    views: 1234,
-                },
-                {
-                    id: "1309886201944473600",
-                    type: 'account',
-                    name: "mert | helius.dev",
-                    username: "0xMert_",
-                    profilePictureUrl: "https://pbs.twimg.com/profile_images/1975912876243095552/YlVLO4Oz_400x400.jpg",
-                    bio: "Helius.",
-                    accountlink: "https://x.com/0xMert_",
-                    joinedDate: "2020-01-25",
-                    followers: 5200000,
-                    following: 412,
-                    tweets: 18000,
                 }
             ];
+
+            // Convert spaces data to ContentItem format and combine
+            const spacesAsContentItems: ContentItem[] = spacesData.map(space => ({
+                ...space,
+                type: 'space' as const
+            }));
+
+            const mockData: ContentItem[] = [...postsAndAccounts, ...spacesAsContentItems];
 
             // Filter out content that has been rated in the last 24 hours
             const now = Date.now();
@@ -151,6 +162,19 @@ const CardList = () => {
         setContentItems(prevItems => prevItems.filter(item => item.id !== contentId));
     };
 
+    const handleJoinSpace = (spaceId: string, spaceLink: string) => {
+        // Notify background script about space join attempt
+        if (chrome?.runtime?.sendMessage) {
+            chrome.runtime.sendMessage({
+                type: 'SPACE_JOIN_ATTEMPT',
+                data: { spaceId, spaceLink, timestamp: new Date().toISOString() }
+            });
+        }
+
+        // Open space link in new tab
+        window.open(spaceLink, '_blank', 'noopener,noreferrer');
+    };
+
     if (loading) {
         return (
             <div className="w-full md:w-[400px] bg-white flex flex-col gap-2 border-l border-[#E2E3F0] p-4 h-[calc(100vh-60px)]">
@@ -180,11 +204,19 @@ const CardList = () => {
 
     return (
         <div className="w-full md:w-[400px] bg-white flex flex-col border-l border-[#E2E3F0] p-4 h-[calc(100vh-120px)] overflow-y-auto">
+            <h2 className="text-lg font-semibold mb-4">Signals</h2>
+            <p className="text-sm text-gray-600 mb-6">
+                Discover trending posts, accounts, and Spaces on X. Rate content to help improve recommendations and earn rewards for quality engagement.
+            </p>
+
             {contentItems.length ? contentItems.map((item) => (
                 <MiniCard
                     key={item.id}
                     {...item}
-                    onFeedbackSubmit={() => handleFeedbackSubmit(item.id)}
+                    {...(item.type === 'space'
+                        ? { onJoinSpace: () => handleJoinSpace(item.id, item.spacelink) }
+                        : { onFeedbackSubmit: () => handleFeedbackSubmit(item.id) }
+                    )}
                 />
             )) : (
                 <div className="text-center py-8">

@@ -32,13 +32,34 @@ interface IAccountCard {
     onFeedbackSubmit?: () => void;
 }
 
-type IMiniCard = IPostCard | IAccountCard;
+interface ISpaceCard {
+    id: string;
+    type: 'space';
+    title: string;
+    host: string;
+    hostUsername: string;
+    hostProfilePictureUrl: string;
+    spacelink: string;
+    description: string;
+    participantCount: number;
+    startedAt: string;
+    estimatedDuration: number;
+    rewardAmount: number;
+    isLive: boolean;
+    onJoinSpace?: () => void;
+}
+
+type IMiniCard = IPostCard | IAccountCard | ISpaceCard;
 
 const MiniCard = (props: IMiniCard) => {
     // const { onFeedbackSubmit } = props;
 
     if (props.type === 'account') {
         return <AccountCard {...props} />;
+    }
+
+    if (props.type === 'space') {
+        return <SpaceCard {...props} />;
     }
 
     return <PostCard {...props} />;
@@ -391,6 +412,125 @@ const PostCard = ({
                     </button>
                 </div>
             )}
+        </div>
+    );
+};
+
+const SpaceCard = ({
+    title,
+    host,
+    hostUsername,
+    hostProfilePictureUrl,
+    spacelink,
+    description,
+    participantCount,
+    startedAt,
+    estimatedDuration,
+    rewardAmount,
+    isLive,
+    onJoinSpace,
+}: ISpaceCard) => {
+    const formatTimeDiff = (timestamp: string) => {
+        const now = new Date();
+        const startTime = new Date(timestamp);
+        const diffMs = now.getTime() - startTime.getTime();
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+        if (diffMins < 1) return 'Just started';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        return `${diffHours}h ago`;
+    };
+
+    const handleJoinSpace = () => {
+        // Open the space link in a new tab
+        window.open(spacelink, '_blank', 'noopener,noreferrer');
+
+        // Notify the extension about joining
+        if (onJoinSpace) {
+            onJoinSpace();
+        }
+    };
+
+    return (
+        <div className="py-4 my-2 border rounded-lg p-4 bg-gradient-to-r from-purple-50 to-blue-50">
+            <div className="flex items-center mb-2">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    isLive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                }`}>
+                    🎙️ {isLive ? 'LIVE Space' : 'Space'}
+                </span>
+                {isLive && (
+                    <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 animate-pulse">
+                        🔴 REC
+                    </span>
+                )}
+            </div>
+
+            <div className="flex flex-row items-center justify-between">
+                <div className="flex flex-row items-center w-[80%]">
+                    <img
+                        src={hostProfilePictureUrl}
+                        alt={`${host}'s profile`}
+                        className="h-12 w-12 rounded-full mr-3"
+                    />
+                    <div className="flex flex-col w-full">
+                        <span className="font-semibold text-base">{title}</span>
+                        <div className="flex w-full justify-between items-center">
+                            <span className="text-gray-500 text-sm">by @{hostUsername}</span>
+                            <span className="text-gray-500 text-xs">{formatTimeDiff(startedAt)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex flex-col items-end space-y-1">
+                    <a
+                        href={spacelink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-gray-500 hover:text-gray-700 flex items-center space-x-1"
+                    >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+
+            <p className="text-gray-700 mt-2 text-sm">{description}</p>
+
+            <div className="flex justify-between items-center mt-3">
+                <div className="flex items-center space-x-4 text-gray-500 text-xs">
+                    <div className="flex items-center space-x-1">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                        </svg>
+                        <span>{participantCount} listening</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                        </svg>
+                        <span>~{estimatedDuration}min</span>
+                    </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                    <div className="text-right">
+                        <div className="text-green-600 font-semibold text-sm">
+                            +{rewardAmount} Xeet
+                        </div>
+                        <div className="text-gray-500 text-xs">
+                            reward
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleJoinSpace}
+                        className="px-4 py-2 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-colors"
+                    >
+                        Join Space
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };

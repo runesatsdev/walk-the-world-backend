@@ -20,11 +20,17 @@
       case 'SPACE_LEFT':
         handleSpaceLeft(message.data);
         break;
+      case 'SPACE_JOIN_ATTEMPT':
+        handleSpaceJoinAttempt(message.data);
+        break;
       case 'OPEN_REPORT_TAB':
         openReportTab();
         break;
       case 'GET_SPACES_DATA':
         sendResponse({ activeSpaces, completedSpaces });
+        break;
+      case 'GET_AVAILABLE_SPACES':
+        sendResponse(getAvailableSpaces());
         break;
     }
   });
@@ -65,7 +71,7 @@
 
       // Grant reward if eligible
       if (spaceData.rewardEarned) {
-        grantSeetReward(completedSpace);
+        grantXeetReward(completedSpace);
       }
 
       // Notify popup about the update
@@ -79,19 +85,42 @@
     }
   }
 
-  function grantSeetReward(spaceSession) {
-    // In a real implementation, this would call the seet API
-    console.log('Granting seet reward for space session:', spaceSession);
+  function grantXeetReward(spaceSession) {
+    // Log session metadata for reward processing
+    const rewardData = {
+      spaceId: spaceSession.id,
+      title: spaceSession.title,
+      host: spaceSession.host,
+      duration: spaceSession.duration,
+      startTime: spaceSession.startTime.toISOString(),
+      endTime: spaceSession.endTime.toISOString(),
+      rewardType: 'space_participation',
+      timestamp: new Date().toISOString()
+    };
 
-    // For now, just log it. In production:
-    // fetch('/api/v1/rewards/spaces', {
+    console.log('Granting Xeet reward for space session:', rewardData);
+
+    // Store reward metadata locally
+    chrome.storage.local.get(['rewardHistory'], (result) => {
+      const history = result.rewardHistory || [];
+      history.push(rewardData);
+      chrome.storage.local.set({ rewardHistory: history.slice(-100) }); // Keep last 100 rewards
+    });
+
+    // In production, send to server:
+    // fetch('https://api.xeet.com/v1/rewards/spaces', {
     //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     spaceId: spaceSession.id,
-    //     duration: spaceSession.duration,
-    //     timestamp: spaceSession.endTime.toISOString()
-    //   })
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //     'Authorization': 'Bearer ' + getAuthToken()
+    //   },
+    //   body: JSON.stringify(rewardData)
+    // }).then(response => {
+    //   if (response.ok) {
+    //     console.log('Reward granted successfully');
+    //   }
+    // }).catch(error => {
+    //   console.error('Failed to grant reward:', error);
     // });
   }
 
@@ -141,4 +170,52 @@
 
   // Periodic cleanup every 5 minutes
   setInterval(cleanupInactiveSpaces, 5 * 60 * 1000);
+
+  function handleSpaceJoinAttempt(data) {
+    console.log('Space join attempt:', data);
+    // Store join attempt for tracking
+    chrome.storage.local.get(['joinAttempts'], (result) => {
+      const attempts = result.joinAttempts || [];
+      attempts.push({
+        ...data,
+        userId: 'current_user' // In production, get from auth
+      });
+      chrome.storage.local.set({ joinAttempts: attempts.slice(-50) }); // Keep last 50
+    });
+  }
+
+  function getAvailableSpaces() {
+    // In production, this would fetch from API
+    // For now, return mock data that matches the UI
+    return [
+      {
+        id: "space_001",
+        title: "Web3 & DeFi Discussion",
+        host: "CryptoExpert",
+        hostUsername: "crypto_expert",
+        hostProfilePictureUrl: "https://pbs.twimg.com/profile_images/1602122467002155010/MI7V7cqu.png",
+        spacelink: "https://x.com/i/spaces/1RDxlBvXaMXKm",
+        description: "Join us for an in-depth discussion about the latest developments in Web3 and DeFi protocols.",
+        participantCount: 1250,
+        startedAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+        estimatedDuration: 60,
+        rewardAmount: 25,
+        isLive: true,
+      },
+      {
+        id: "space_002",
+        title: "AI & Machine Learning Today",
+        host: "AIPioneer",
+        hostUsername: "ai_pioneer",
+        hostProfilePictureUrl: "https://pbs.twimg.com/profile_images/1983681414370619392/oTT3nm5Z_400x400.jpg",
+        spacelink: "https://x.com/i/spaces/1RDxlBvXaMXKm",
+        description: "Exploring the cutting-edge developments in artificial intelligence and machine learning.",
+        participantCount: 890,
+        startedAt: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
+        estimatedDuration: 45,
+        rewardAmount: 20,
+        isLive: true,
+      }
+    ];
+  }
 })();

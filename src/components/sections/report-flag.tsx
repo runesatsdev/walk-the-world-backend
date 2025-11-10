@@ -77,8 +77,9 @@ const ReportFlag = () => {
 
   return (
     <div className="w-full md:w-[400px] bg-white flex flex-col border-l border-[#E2E3F0] p-4 h-[calc(100vh-120px)] overflow-y-auto">
-      <p className="text-sm text-gray-600 mb-4">
-        Report spam, fraud, or rule violations from profiles or posts.
+      <h2 className="text-lg font-semibold mb-4">Report & Flag</h2>
+      <p className="text-sm text-gray-600 mb-6">
+        Help maintain a safe and positive X community. Report spam, fraud, harassment, or rule violations from profiles, posts, or Spaces. Your reports help protect users and improve platform safety.
       </p>
 
       {/* Quick Report Button */}
