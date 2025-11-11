@@ -80,7 +80,6 @@
     handleNewSession(spaceData, sender);
   }
 
-
   function handleNewSession(spaceData, sender) {
     // Start a new space session
     activeSpaces[spaceData.id] = {
@@ -154,7 +153,8 @@
       startTime: new Date(spaceSession.startTime).toISOString(),
       endTime: new Date(spaceSession.endTime).toISOString(),
       rewardType: 'space_participation',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      rewardAmount: 25 // Fixed reward amount for spaces for now
     };
 
     console.log('Granting Xeet reward for space session:', rewardData);

@@ -97,13 +97,13 @@
       console.log('Extracted host:', spaceHost);
     }
 
-    // // Recording indicator as additional confirmation
-    // if (!spaceFound && recIndicator) {
-    //   spaceFound = true;
-    //   console.log('Space detected via Recording indicator');
-    //   spaceTitle = extractTextWithEmojis(spaceTitleElement) || 'Unknown Space';
-    //   spaceHost = extractHost();
-    // }
+    // Recording indicator as additional confirmation
+    if (!spaceFound && recIndicator) {
+      spaceFound = true;
+      console.log('Space detected via Recording indicator');
+      spaceTitle = extractTextWithEmojis(spaceTitleElement) || 'Unknown Space';
+      spaceHost = extractHost();
+    }
 
     // // Check for other Space-related elements as fallback
     // if (!spaceFound) {

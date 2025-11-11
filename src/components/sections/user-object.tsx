@@ -31,7 +31,7 @@ const UserObject = () => {
           id: `reward_${index}`,
           spaceId: reward.spaceId,
           spaceTitle: reward.title,
-          amount: reward.rewardType === 'space_participation' ? 25 : 0, // Default amount
+          amount: reward.rewardAmount, // Default amount
           earnedAt: reward.timestamp,
           claimed: false, // In production, check against claimed rewards
           claimedAt: undefined

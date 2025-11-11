@@ -371,12 +371,12 @@ const SpacesTracking = () => {
             <div key={session.id} className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-2">
               <div className="flex justify-between items-start mb-1">
                 <div className="font-medium text-sm">{session.title}</div>
-                <div className="text-right">
+                {/* <div className="text-right">
                   <div className={`text-xs font-medium ${session.rewardEarned ? 'text-green-600' : 'text-gray-500'
                     }`}>
                     {session.rewardEarned ? `✓ +${session.rewardAmount || 0} Xeet` : 'No reward'}
                   </div>
-                </div>
+                </div> */}
               </div>
               <div className="text-xs text-gray-600">Host: {session.host}</div>
               <div className="text-xs text-gray-600">Duration: {formatDuration(session.duration)}</div>
