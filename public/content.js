@@ -5,7 +5,29 @@
   let currentSpaceSession = null;
   let sessionStartTime = null;
   let mutationObserver = null;
-  const MIN_DURATION_MINUTES = 5; // Minimum duration for reward
+  const MIN_DURATION_MINUTES = 1; // Minimum duration for reward
+
+  // Function to extract text content including emoji alt text
+  function extractTextWithEmojis(element) {
+    if (!element) return '';
+
+    let text = '';
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, null, false);
+
+    let node;
+    while (node = walker.nextNode()) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        text += node.textContent;
+      } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'IMG') {
+        const alt = node.getAttribute('alt');
+        if (alt) {
+          text += alt;
+        }
+      }
+    }
+
+    return text.trim();
+  }
 
   // Function to detect if we're in a Space
   function detectSpace() {
@@ -25,9 +47,9 @@
       spaceFound = true;
       console.log('Space detected via SpaceDockExpanded');
 
-      // Extract title from tweetText
+      // Extract title from tweetText including emojis
       if (spaceTitleElement) {
-        spaceTitle = spaceTitleElement.textContent?.trim();
+        spaceTitle = extractTextWithEmojis(spaceTitleElement);
       }
 
       // Extract host using enhanced logic
@@ -60,60 +82,69 @@
       }
     }
 
+    // Use Leave button as primary detection if SpaceDock not found
     if (!spaceFound && leaveButtonFound) {
       spaceFound = true;
       console.log('Space detected via Leave button');
-      spaceTitle = spaceTitleElement?.textContent?.trim() || 'Unknown Space';
-      spaceHost = extractHost();
-    }
 
-    // Recording indicator as additional confirmation
-    if (!spaceFound && recIndicator) {
-      spaceFound = true;
-      console.log('Space detected via Recording indicator');
-      spaceTitle = spaceTitleElement?.textContent?.trim() || 'Unknown Space';
-      spaceHost = extractHost();
-    }
-
-    // Check for other Space-related elements as fallback
-    if (!spaceFound) {
-      const fallbackSelectors = [
-        '[data-testid*="space"]',
-        '[role="group"][aria-label*="Space"]',
-        '[data-testid="space-title"]',
-        'h1[data-testid*="space"]',
-        '[data-testid="SpacePageHeader"]',
-        '[data-testid="SpaceTitle"]',
-        '[data-testid="SpaceHost"]'
-      ];
-
-      for (const selector of fallbackSelectors) {
-        const elements = document.querySelectorAll(selector);
-        if (elements.length > 0) {
-          spaceFound = true;
-          console.log('Space detected via fallback selector:', selector);
-          if (!spaceTitle && (selector.includes('title') || selector.includes('Title'))) {
-            spaceTitle = elements[0].textContent;
-          }
-          if (!spaceHost && (selector.includes('host') || selector.includes('Host'))) {
-            spaceHost = elements[0].textContent;
-          }
-          break;
-        }
+      // Extract title from tweetText including emojis
+      if (spaceTitleElement) {
+        spaceTitle = extractTextWithEmojis(spaceTitleElement);
       }
+
+      // Extract host using enhanced logic
+      spaceHost = extractHost();
+      console.log('Extracted host:', spaceHost);
     }
+
+    // // Recording indicator as additional confirmation
+    // if (!spaceFound && recIndicator) {
+    //   spaceFound = true;
+    //   console.log('Space detected via Recording indicator');
+    //   spaceTitle = extractTextWithEmojis(spaceTitleElement) || 'Unknown Space';
+    //   spaceHost = extractHost();
+    // }
+
+    // // Check for other Space-related elements as fallback
+    // if (!spaceFound) {
+    //   const fallbackSelectors = [
+    //     '[data-testid*="space"]',
+    //     '[role="group"][aria-label*="Space"]',
+    //     '[data-testid="space-title"]',
+    //     'h1[data-testid*="space"]',
+    //     '[data-testid="SpacePageHeader"]',
+    //     '[data-testid="SpaceTitle"]',
+    //     '[data-testid="SpaceHost"]'
+    //   ];
+
+    //   for (const selector of fallbackSelectors) {
+    //     const elements = document.querySelectorAll(selector);
+    //     if (elements.length > 0) {
+    //       spaceFound = true;
+    //       console.log('Space detected via fallback selector:', selector);
+    //       if (!spaceTitle && (selector.includes('title') || selector.includes('Title'))) {
+    //         spaceTitle = elements[0].textContent;
+    //       }
+    //       if (!spaceHost && (selector.includes('host') || selector.includes('Host'))) {
+    //         spaceHost = elements[0].textContent;
+    //       }
+    //       break;
+    //     }
+    //   }
+    // }
 
     // Check shadow DOM as last resort
     if (!spaceFound) {
       const shadowHosts = document.querySelectorAll('*');
       for (const host of shadowHosts) {
         if (host.shadowRoot) {
-          const shadowSpaceDock = host.shadowRoot.querySelector('[data-testid="SpaceDockExpanded"]');
-          if (shadowSpaceDock) {
+          const shadowSpaceDockExpanded = host.shadowRoot.querySelector('[data-testid="SpaceDockExpanded"]');
+          const shadowSpaceDock = host.shadowRoot.querySelector('[data-testid="SpaceDock"]');
+          if (shadowSpaceDock || shadowSpaceDockExpanded) {
             spaceFound = true;
             console.log('Space detected in shadow DOM');
             const shadowTitle = host.shadowRoot.querySelector('[data-testid="tweetText"]');
-            spaceTitle = shadowTitle?.textContent?.trim() || 'Unknown Space';
+            spaceTitle = extractTextWithEmojis(shadowTitle) || 'Unknown Space';
             spaceHost = extractHost();
             break;
           }
@@ -126,7 +157,7 @@
       const title = spaceTitle || 'Unknown Space';
       const host = spaceHost || extractHost();
 
-      if (!currentSpaceSession || currentSpaceSession.id !== spaceId) {
+      if (!currentSpaceSession || currentSpaceSession.title !== title) {
         startSpaceSession(spaceId, title, host);
       }
     } else if (currentSpaceSession) {
@@ -153,7 +184,7 @@
           // Look for the user name in the associated container
           // The structure has the user avatar and name in a preceding sibling or parent
           const userInfoContainer = hostContainer.previousElementSibling ||
-                                   hostContainer.parentElement?.previousElementSibling;
+            hostContainer.parentElement?.previousElementSibling;
 
           if (userInfoContainer) {
             // Look for spans containing the user name (typically with emoji and verification)
@@ -252,14 +283,20 @@
   }
 
   function startSpaceSession(spaceId, title, host) {
+    // End any existing session before starting a new one
+    if (currentSpaceSession && currentSpaceSession.title !== title) {
+      endSpaceSession();
+    }
+
     currentSpaceSession = {
       id: spaceId,
       title: title,
       host: host,
       startTime: new Date().toISOString()
     };
+
     sessionStartTime = Date.now();
-    
+
     // Notify background script (only if chrome.runtime is available and we have the correct extension ID)
     if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
       try {
@@ -411,7 +448,7 @@
     initMutationObserver();
 
     // Fallback periodic check (less frequent)
-    setInterval(detectSpace, 3000); // Check every 30 seconds as fallback
+    setInterval(detectSpace, 10000); // Check every 10 seconds as fallback
 
     // Add report overlay
     // addReportOverlay();

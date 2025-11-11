@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { showSuccessToast } from "../ui/custom-toast";
+// import { showSuccessToast } from "../ui/custom-toast";
 
 interface SpaceSession {
   id: string;
@@ -12,6 +12,7 @@ interface SpaceSession {
   rewardEarned: boolean;
   rewardAmount?: number;
   endTime?: Date;
+  isClaimable?: boolean;
 }
 
 interface AvailableSpace {
@@ -37,7 +38,7 @@ const SpacesTracking = () => {
   const [completedSessions, setCompletedSessions] = useState<SpaceSession[]>([]);
   const [availableSpaces, setAvailableSpaces] = useState<AvailableSpace[]>([]);
   const [loading, setLoading] = useState(true);
-  const [trackingSpaceId, setTrackingSpaceId] = useState<string | null>(null);
+  const [trackingSpaceTitle, setTrackingSpaceTitle] = useState<string | null>(null);
 
   useEffect(() => {
     loadSessions();
@@ -57,8 +58,10 @@ const SpacesTracking = () => {
     // Load from chrome storage
     if (chrome?.storage?.local) {
       chrome.storage.local.get(['activeSpaces', 'completedSpaces'], (result) => {
-        setActiveSessions(result.activeSpaces || []);
-        setCompletedSessions(result.completedSpaces || []);
+        const activeSpaces = Array.isArray(result.activeSpaces) ? result.activeSpaces : [];
+        const completedSpaces = Array.isArray(result.completedSpaces) ? result.completedSpaces : [];
+        setActiveSessions(activeSpaces);
+        setCompletedSessions(completedSpaces);
         setLoading(false);
       });
     } else {
@@ -75,12 +78,12 @@ const SpacesTracking = () => {
       // Mock data simulating server response
       const mockSpaces: AvailableSpace[] = [
         {
-          id: "space_001",
-          title: "Web3 & DeFi Deep Dive",
-          host: "CryptoExpert",
-          hostUsername: "crypto_expert",
+          id: "1mnxeNVXrYvKX",
+          title: "STATE OF TYPE 🚨 EP. 346",
+          host: "Tex",
+          hostUsername: "TexSlays",
           hostProfilePictureUrl: "https://pbs.twimg.com/profile_images/1602122467002155010/MI7V7cqu.png",
-          spacelink: "https://x.com/i/spaces/1RDxlBvXaMXKm",
+          spacelink: "https://x.com/i/spaces/1mnxeNVXrYvKX/peek?s=20",
           description: "Join us for an in-depth discussion about the latest developments in Web3 and DeFi protocols. We'll cover DeFi yields, NFT markets, and blockchain scalability solutions.",
           participantCount: 1250,
           startedAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
@@ -97,7 +100,7 @@ const SpacesTracking = () => {
           host: "AIPioneer",
           hostUsername: "ai_pioneer",
           hostProfilePictureUrl: "https://pbs.twimg.com/profile_images/1983681414370619392/oTT3nm5Z_400x400.jpg",
-          spacelink: "https://x.com/i/spaces/1RDxlBvXaMXKm",
+          spacelink: "https://x.com/i/spaces/1RDxlBvXaMXKm/peek?s=20",
           description: "Exploring the cutting-edge developments in artificial intelligence and machine learning. From GPT-4 advancements to practical ML applications in business.",
           participantCount: 890,
           startedAt: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
@@ -178,7 +181,8 @@ const SpacesTracking = () => {
       duration: sessionData.duration || 0,
       rewardEarned: sessionData.rewardEarned || false,
       rewardAmount: sessionData.rewardAmount,
-      endTime: sessionData.completed ? new Date() : undefined
+      endTime: sessionData.completed ? new Date() : undefined,
+      isClaimable: sessionData.completed ? (sessionData.duration >= 1) : undefined
     };
 
     if (sessionData.completed) {
@@ -201,6 +205,10 @@ const SpacesTracking = () => {
         }
         return filtered;
       });
+      // Clear tracking title if this was the tracked space
+      if (trackingSpaceTitle === session.title) {
+        setTrackingSpaceTitle(null);
+      }
     } else {
       setActiveSessions(prev => {
         const existing = prev.find(s => s.id === session.id);
@@ -215,6 +223,8 @@ const SpacesTracking = () => {
         }
         return updated;
       });
+      // Update tracking title when there's an active session
+      setTrackingSpaceTitle(session.title);
     }
   };
 
@@ -229,22 +239,22 @@ const SpacesTracking = () => {
     window.open(space.spacelink, '_blank', 'noopener,noreferrer');
 
     // Notify background script about joining
-    if (chrome?.runtime?.sendMessage) {
-      chrome.runtime.sendMessage({
-        type: 'SPACE_JOIN_ATTEMPT',
-        data: {
-          spaceId: space.id,
-          spaceLink: space.spacelink,
-          spaceTitle: space.title,
-          rewardAmount: space.rewardAmount,
-          timestamp: new Date().toISOString()
-        }
-      });
-    }
+    // if (chrome?.runtime?.sendMessage) {
+    //   chrome.runtime.sendMessage({
+    //     type: 'SPACE_JOIN_ATTEMPT',
+    //     data: {
+    //       spaceId: space.id,
+    //       spaceLink: space.spacelink,
+    //       spaceTitle: space.title,
+    //       rewardAmount: space.rewardAmount,
+    //       timestamp: new Date().toISOString()
+    //     }
+    //   });
+    // }
 
     // Set tracking state
-    setTrackingSpaceId(space.id);
-    showSuccessToast(`Joined "${space.title}" - tracking for rewards!`);
+    // setTrackingSpaceTitle(space.title);
+    // showSuccessToast(`Joined "${space.title}" - tracking for rewards!`);
   };
 
   const formatTimeAgo = (timestamp: string) => {
@@ -312,13 +322,13 @@ const SpacesTracking = () => {
               </div>
               <button
                 onClick={() => handleJoinSpace(space)}
-                disabled={trackingSpaceId === space.id}
-                className="w-full bg-white text-black text-sm font-medium py-2 px-4 rounded-lg hover:bg-gray-100 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                disabled={trackingSpaceTitle === space.title}
+                className="w-full cursor-pointer bg-white text-black text-sm font-medium py-2 px-4 rounded-lg hover:bg-gray-100 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true" className="w-4 h-4" style={{ color: 'rgb(15, 20, 25)' }}>
                   <g><path d="M21 12L4 2v20l17-10z"></path></g>
                 </svg>
-                {trackingSpaceId === space.id ? '🎯 Tracking for Rewards' : `Join Space & Earn +${space.rewardAmount} Xeet`}
+                {trackingSpaceTitle === space.title ? '🎯 Tracking for Rewards' : `Join Space & Earn +${space.rewardAmount} Xeet`}
               </button>
             </div>
           ))}
@@ -334,7 +344,7 @@ const SpacesTracking = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="font-medium">{session.title}</div>
-                  <div className="text-sm text-gray-600">Host: @{session.hostUsername}</div>
+                  <div className="text-sm text-gray-600">Host: {session.host}</div>
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-medium text-green-600">
@@ -368,11 +378,20 @@ const SpacesTracking = () => {
                   </div>
                 </div>
               </div>
-              <div className="text-xs text-gray-600">Host: @{session.hostUsername}</div>
+              <div className="text-xs text-gray-600">Host: {session.host}</div>
               <div className="text-xs text-gray-600">Duration: {formatDuration(session.duration)}</div>
-              {session.endTime && (
+              {session.isClaimable !== undefined && (
+                <div className={`text-xs mt-1 ${session.isClaimable ? 'text-green-600' : 'text-gray-500'}`}>
+                  {session.isClaimable ? '✓ Eligible for reward' : 'Not eligible (under 1 min)'}
+                </div>
+              )}
+              {session.endTime ? (
                 <div className="text-xs text-gray-500 mt-1">
                   {new Date(session.endTime).toLocaleDateString()} at {new Date(session.endTime).toLocaleTimeString()}
+                </div>
+              ) : (
+                <div className="text-xs text-gray-400 mt-1 italic">
+                  Ongoing
                 </div>
               )}
             </div>

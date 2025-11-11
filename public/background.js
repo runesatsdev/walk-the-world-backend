@@ -1,5 +1,5 @@
 // Background script for handling Spaces tracking and rewards
-(function() {
+(function () {
   'use strict';
 
   let activeSpaces = {};
@@ -37,15 +37,61 @@
   });
 
   function handleSpaceJoined(spaceData, sender) {
+    const [existingSpaceId] = Object.keys(activeSpaces);
+
+    // If no active session, start a new one
+    if (!existingSpaceId) return handleNewSession(spaceData, sender);
+
+    const existingSpace = activeSpaces[existingSpaceId];
+    const isDifferentSpace =
+      existingSpace.title !== spaceData.title ||
+      existingSpace.host !== spaceData.host;
+
+    // If joining the same space, do nothing
+    if (!isDifferentSpace) return;
+
+    // Calculate duration and reward eligibility
+    const duration = Math.floor((Date.now() - existingSpace.startTime) / 60000); // ms → minutes
+    const rewardEarned = duration >= 1;
+
+    // Create completed session record
+    const completedSpace = {
+      ...existingSpace,
+      duration,
+      rewardEarned,
+      endTime: Date.now(),
+    };
+
+    // Update session records
+    completedSpaces.push(completedSpace);
+    delete activeSpaces[existingSpaceId];
+
+    // Notify UI or background
+    try {
+      chrome.runtime
+        .sendMessage({
+          type: "SPACE_SESSION_UPDATE",
+          data: { ...completedSpace, completed: true },
+        })
+        .catch(() => { });
+    } catch (_) { }
+
+    // Start new session
+    handleNewSession(spaceData, sender);
+  }
+
+
+  function handleNewSession(spaceData, sender) {
+    // Start a new space session
     activeSpaces[spaceData.id] = {
       ...spaceData,
-      startTime: new Date(spaceData.startTime),
+      startTime: spaceData.startTime,
       tabId: sender.tab.id
     };
 
     saveSpacesData();
 
-    // Notify popup about the update (only if popup is open)
+    // Notify popup about the new active session
     try {
       chrome.runtime.sendMessage({
         type: 'SPACE_SESSION_UPDATE',
@@ -68,7 +114,7 @@
         ...space,
         duration: spaceData.duration,
         rewardEarned: spaceData.rewardEarned,
-        endTime: new Date()
+        endTime: Date.now()
       };
 
       completedSpaces.push(completedSpace);
@@ -105,8 +151,8 @@
       title: spaceSession.title,
       host: spaceSession.host,
       duration: spaceSession.duration,
-      startTime: spaceSession.startTime.toISOString(),
-      endTime: spaceSession.endTime.toISOString(),
+      startTime: new Date(spaceSession.startTime).toISOString(),
+      endTime: new Date(spaceSession.endTime).toISOString(),
       rewardType: 'space_participation',
       timestamp: new Date().toISOString()
     };
