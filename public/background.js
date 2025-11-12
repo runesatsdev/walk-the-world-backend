@@ -13,7 +13,6 @@
 
   // Handle messages from content script
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log("message received in background.js-->>>", message);
     switch (message.type) {
       case 'SPACE_JOINED':
         handleSpaceJoined(message.data, sender);
@@ -88,7 +87,8 @@
     if (spaceDuration) {
 
       activeSpaces[spaceData.id] = {
-        ...spaceDuration
+        ...spaceDuration,
+        duration: spaceData.duration
       };
 
       saveSpacesData();
@@ -96,7 +96,7 @@
       chrome.runtime
         .sendMessage({
           type: "SPACE_SESSION_UPDATE",
-          data: { ...spaceDuration, completed: false },
+          data: { ...activeSpaces[spaceData.id], completed: false },
         })
         .catch(() => { });
     }
@@ -119,11 +119,18 @@
     if (matchedSpace) {
       console.log('Matched space found, opening extension popup:', matchedSpace.title);
       // Open the extension popup
-      if (chrome.action && chrome.action.openPopup) {
-        chrome.action.openPopup();
-      } else {
-        // Fallback for older Chrome versions
-        chrome.browserAction.openPopup();
+      try {
+        if (chrome.action && chrome.action.openPopup) {
+          chrome.action.openPopup().catch(() => {
+            // Ignore popup opening errors
+          });
+        } else if (chrome.browserAction && chrome.browserAction.openPopup) {
+          // Fallback for older Chrome versions
+          chrome.browserAction.openPopup();
+        }
+      } catch (error) {
+        // Ignore popup opening errors
+        console.log('Could not open popup:', error);
       }
 
       // Send message to switch to spaces tab

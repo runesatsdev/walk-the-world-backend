@@ -172,6 +172,7 @@ const SpacesTracking = () => {
   };
 
   const handleSpaceSessionUpdate = (sessionData: any) => {
+    console.log("sessionData received in SpacesTracking:", sessionData);
     const session: SpaceSession = {
       id: sessionData.id,
       title: sessionData.title,
@@ -228,10 +229,20 @@ const SpacesTracking = () => {
     }
   };
 
-  const formatDuration = (minutes: number) => {
+  const formatDurationMin = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  };
+
+  const formatDurationSec = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+
+    if (hours > 0) return `${hours}h ${mins}m ${secs}s`;
+    if (mins > 0) return `${mins}m ${secs}s`;
+    return `${secs}s`;
   };
 
   const handleJoinSpace = (space: AvailableSpace) => {
@@ -328,7 +339,7 @@ const SpacesTracking = () => {
                 <svg viewBox="0 0 24 24" aria-hidden="true" className="w-4 h-4" style={{ color: 'rgb(15, 20, 25)' }}>
                   <g><path d="M21 12L4 2v20l17-10z"></path></g>
                 </svg>
-                {trackingSpaceTitle === space.title ? `🎯 Tracking for Rewards ${Math.floor(activeSessions[0].duration / 60)}` : `Join Space & Earn +${space.rewardAmount} Xeet`}
+                {trackingSpaceTitle === space.title ? `🎯 Tracking for Rewards ${formatDurationSec(activeSessions[0]?.duration || 0)}` : `Join Space & Earn +${space.rewardAmount} Xeet`}
               </button>
             </div>
           ))}
@@ -348,7 +359,7 @@ const SpacesTracking = () => {
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-medium text-green-600">
-                    {formatDuration(session.duration)}
+                    {formatDuration(session?.duration || 0)}
                   </div>
                   <div className="text-xs text-gray-500">elapsed</div>
                 </div>
@@ -379,7 +390,7 @@ const SpacesTracking = () => {
                 </div> */}
               </div>
               <div className="text-xs text-gray-600">Host: {session.host}</div>
-              <div className="text-xs text-gray-600">Duration: {formatDuration(session.duration)}</div>
+              <div className="text-xs text-gray-600">Duration: {formatDurationMin(session.duration)}</div>
               {session.isClaimable !== undefined && (
                 <div className={`text-xs mt-1 ${session.isClaimable ? 'text-green-600' : 'text-gray-500'}`}>
                   {session.isClaimable ? '✓ Eligible for reward' : 'Not eligible (under 1 min)'}
