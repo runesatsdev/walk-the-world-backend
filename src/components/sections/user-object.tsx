@@ -4,8 +4,12 @@ import { showSuccessToast, showErrorToast } from "../ui/custom-toast";
 
 interface Reward {
   id: string;
-  spaceId: string;
-  spaceTitle: string;
+  type: 'space' | 'feedback';
+  spaceId?: string;
+  spaceTitle?: string;
+  contentType?: 'post' | 'account';
+  title?: string;
+  username?: string;
   amount: number;
   earnedAt: string;
   claimed: boolean;
@@ -27,15 +31,35 @@ const UserObject = () => {
     if (chrome?.storage?.local) {
       chrome.storage.local.get(['rewardHistory'], (result) => {
         const rewardHistory = result.rewardHistory || [];
-        const formattedRewards: Reward[] = rewardHistory.map((reward: any, index: number) => ({
-          id: `reward_${index}`,
-          spaceId: reward.spaceId,
-          spaceTitle: reward.title,
-          amount: reward.rewardAmount, // Default amount
-          earnedAt: reward.timestamp,
-          claimed: false, // In production, check against claimed rewards
-          claimedAt: undefined
-        }));
+
+        const formattedRewards: Reward[] = rewardHistory.map((reward: any) => {
+          if (reward.type === 'feedback') {
+            return {
+              id: reward.id,
+              type: 'feedback',
+              contentType: reward.contentType,
+              title: reward.title,
+              username: reward.username,
+              amount: reward.rewardAmount,
+              earnedAt: reward.submittedAt,
+              claimed: true, // Feedback rewards are auto-claimed
+              claimedAt: reward.submittedAt
+            };
+          } else {
+            // Space reward
+            return {
+              id: reward.id || `space_${Date.now()}`,
+              type: 'space',
+              spaceId: reward.spaceId,
+              spaceTitle: reward.title,
+              amount: reward.rewardAmount,
+              earnedAt: reward.timestamp || reward.earnedAt,
+              claimed: reward.claimed || false,
+              claimedAt: reward.claimedAt
+            };
+          }
+        });
+
         setRewards(formattedRewards);
         setLoading(false);
       });
@@ -124,17 +148,21 @@ const UserObject = () => {
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   <div className="font-medium text-green-600">+{reward.amount} Xeet</div>
-                  <div className="text-sm text-gray-600">{reward.spaceTitle}</div>
+                  <div className="text-sm text-gray-600">
+                    {reward.type === 'space' ? `Space: ${reward.spaceTitle || 'Unknown Space'}` :
+                     reward.type === 'feedback' ? `${reward.contentType === 'post' ? '📄' : '👤'} ${reward.title || 'Unknown Content'}` :
+                     'Unknown reward'}
+                  </div>
                   <div className="text-xs text-gray-500">
                     Earned: {new Date(reward.earnedAt).toLocaleDateString()}
                   </div>
                   {reward.claimed && reward.claimedAt && (
                     <div className="text-xs text-green-600">
-                      Claimed: {new Date(reward.claimedAt).toLocaleDateString()}
+                      {reward.type === 'feedback' ? 'Auto-claimed' : `Claimed: ${new Date(reward.claimedAt).toLocaleDateString()}`}
                     </div>
                   )}
                 </div>
-                {!reward.claimed && (
+                {!reward.claimed && reward.type === 'space' && (
                   <button
                     onClick={() => claimReward(reward.id)}
                     disabled={claimingReward === reward.id}
@@ -145,7 +173,7 @@ const UserObject = () => {
                 )}
                 {reward.claimed && (
                   <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded">
-                    ✓ Claimed
+                    ✓ {reward.type === 'feedback' ? 'Earned' : 'Claimed'}
                   </span>
                 )}
               </div>

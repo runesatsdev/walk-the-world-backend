@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { showSuccessToast, showErrorToast } from "../ui/custom-toast";
-import { claimReward } from "../../services/api";
+import { formatDurationMin, formatTimeAgo, formatDurationSec } from "../../services/lib";
 
 interface SpaceSession {
   id: string;
@@ -230,45 +229,6 @@ const SpacesTracking = () => {
     }
   };
 
-  const handleClaimReward = async (sessionId: string) => {
-    try {
-      // Claim reward using API service
-      const result = await claimReward(sessionId);
-
-      if (!result) {
-        throw new Error('Failed to claim reward');
-      }
-
-      // Update the session to mark reward as claimed
-      setCompletedSessions(prev => prev.map(session =>
-        session.id === sessionId
-          ? { ...session, rewardEarned: false } // Mark as claimed by removing rewardEarned
-          : session
-      ));
-
-      showSuccessToast(`Reward claimed! You received ${result.amount} Xeet!`);
-    } catch (error) {
-      console.error('Error claiming reward:', error);
-      showErrorToast('Failed to claim reward. Please try again.');
-    }
-  };
-
-  const formatDurationMin = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-  };
-
-  const formatDurationSec = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-
-    if (hours > 0) return `${hours}h ${mins}m ${secs}s`;
-    if (mins > 0) return `${mins}m ${secs}s`;
-    return `${secs}s`;
-  };
-
   const handleJoinSpace = (space: AvailableSpace) => {
     // Open space link in new tab
     window.open(space.spacelink, '_blank', 'noopener,noreferrer');
@@ -290,18 +250,6 @@ const SpacesTracking = () => {
     // Set tracking state
     // setTrackingSpaceTitle(space.title);
     // showSuccessToast(`Joined "${space.title}" - tracking for rewards!`);
-  };
-
-  const formatTimeAgo = (timestamp: string) => {
-    const now = new Date();
-    const startTime = new Date(timestamp);
-    const diffMs = now.getTime() - startTime.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-
-    if (diffMins < 1) return 'Just started';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    return `${diffHours}h ago`;
   };
 
   if (loading) {
