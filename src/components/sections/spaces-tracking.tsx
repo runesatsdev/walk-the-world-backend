@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-// import { showSuccessToast } from "../ui/custom-toast";
+import { showSuccessToast, showErrorToast } from "../ui/custom-toast";
+import { claimReward } from "../../services/api";
 
 interface SpaceSession {
   id: string;
@@ -226,6 +227,29 @@ const SpacesTracking = () => {
       });
       // Update tracking title when there's an active session
       setTrackingSpaceTitle(session.title);
+    }
+  };
+
+  const handleClaimReward = async (sessionId: string) => {
+    try {
+      // Claim reward using API service
+      const result = await claimReward(sessionId);
+
+      if (!result) {
+        throw new Error('Failed to claim reward');
+      }
+
+      // Update the session to mark reward as claimed
+      setCompletedSessions(prev => prev.map(session =>
+        session.id === sessionId
+          ? { ...session, rewardEarned: false } // Mark as claimed by removing rewardEarned
+          : session
+      ));
+
+      showSuccessToast(`Reward claimed! You received ${result.amount} Xeet!`);
+    } catch (error) {
+      console.error('Error claiming reward:', error);
+      showErrorToast('Failed to claim reward. Please try again.');
     }
   };
 

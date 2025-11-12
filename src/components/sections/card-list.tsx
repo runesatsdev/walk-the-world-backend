@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
+import { usePrivy } from '@privy-io/react-auth';
 import MiniCard from "../reusables/mini-card";
+import { fetchNextTask } from "../../services/api";
+import { transformTaskToContentItem } from "../../services/lib";
 
 type ContentItem = Post | Account;
 
@@ -33,6 +36,7 @@ interface Account {
 }
 
 const CardList = () => {
+    const { getAccessToken } = usePrivy();
     const [contentItems, setContentItems] = useState<ContentItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -41,75 +45,55 @@ const CardList = () => {
     const [feedbackHistory, setFeedbackHistory] = useState<{ [key: string]: number }>({});
 
     useEffect(() => {
-        fetchContent();
-        loadFeedbackHistory();
+        const init = async () => {
+            await loadFeedbackHistory();
+            await fetchContent();
+        };
+        init();
     }, []);
 
     const fetchContent = async () => {
         try {
             setLoading(true);
-            // Simulate network delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
 
-            // Spaces are now handled in the dedicated Spaces Tracking tab
-            // Removed space fetching logic from here
+            // Get access token from Privy
+            const accessToken = await getAccessToken();
 
-            // In a real implementation, this would call the Xeet API for posts/accounts
-            // const response = await fetch('/api/v1/signals/*');
-            // const data = await response.json();
+            if (!accessToken) {
+                throw new Error('No access token available');
+            }
 
-            // Combine posts/accounts with spaces from background script
-            const postsAndAccounts: ContentItem[] = [
-                {
-                    id: "1986975980678725634",
-                    type: 'post',
-                    name: "Josh Ong",
-                    username: "beijingdou",
-                    profilePictureUrl: "https://pbs.twimg.com/profile_images/1602122467002155010/MI7V7cqu.png",
-                    content: "This is a sample tweet contentalsdfkljsadhfkljasjkldfhklj;wehfj;hwae;jkfhajk;lsefh;laksdhfkj;lsdhjkfhwuiefakljshdfjkhasdiufaweflkjashdljkfashdiuhwaekjfhl.",
-                    tweetlink: "https://x.com/i/web/status/1986975980678725634",
-                    timestamp: "2025-11-08T14:00:00Z",
-                    replies: 12,
-                    reposts: 45,
-                    likes: 123,
-                    views: 2456,
-                },
-                {
-                    id: "44196397",
-                    type: 'account',
-                    name: "Elon Musk",
-                    username: "elonmusk",
-                    profilePictureUrl: "https://pbs.twimg.com/profile_images/1983681414370619392/oTT3nm5Z_400x400.jpg",
-                    bio: "Mars & Cars & Energy & Comedy",
-                    accountlink: "https://x.com/elonmusk",
-                    joinedDate: "2009-06-02",
-                    followers: 128000000,
-                    following: 128,
-                    tweets: 25000,
-                }
-            ];
+            // Fetch next task from backend using API service
+            const taskData = await fetchNextTask(accessToken);
+            const feedbackHistory = JSON.parse(localStorage.getItem('feedbackHistory') || '{}');
 
-            // Only use posts and accounts (spaces are handled in the dedicated Spaces Tracking tab)
-            const mockData: ContentItem[] = [...postsAndAccounts];
+            // Transform backend data to match our ContentItem interface
+            let contentItem: ContentItem | null = null;
+
+            if (taskData) {
+                contentItem = transformTaskToContentItem(taskData);
+            }
 
             // Filter out content that has been rated in the last 24 hours
             const now = Date.now();
-            const filteredContent = mockData.filter(item => {
+            const filteredContent = contentItem ? [contentItem].filter(item => {
+
                 const lastRated = feedbackHistory[item.id];
                 if (!lastRated) return true;
-                return (now - lastRated) > (24 * 60 * 60 * 1000); // 24 hours in milliseconds
-            });
+                return (now - lastRated) > 1000; // 1 second in milliseconds
+                // return (now - lastRated) > (24 * 60 * 60 * 1000); // 24 hours in milliseconds
+            }) : [];
 
             setContentItems(filteredContent);
         } catch (err) {
-            setError('Failed to load content');
+            setError('Failed to load content from server');
             console.error('Error fetching content:', err);
         } finally {
             setLoading(false);
         }
     };
 
-    const loadFeedbackHistory = () => {
+    const loadFeedbackHistory = async () => {
         const history = localStorage.getItem('feedbackHistory');
         if (history) {
             setFeedbackHistory(JSON.parse(history));

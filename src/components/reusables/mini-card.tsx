@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { usePrivy } from '@privy-io/react-auth';
 import { showSuccessToast, showErrorToast } from "../ui/custom-toast";
+import { submitFeedback } from "../../services/api";
 
 interface IPostCard {
     id: string;
@@ -77,6 +79,7 @@ const truncateText = (text: string, maxLength: number = 50) => {
 };
 
 const AccountCard = ({
+    id,
     name,
     username,
     profilePictureUrl,
@@ -88,6 +91,7 @@ const AccountCard = ({
     tweets,
     onFeedbackSubmit,
 }: IAccountCard) => {
+    const { getAccessToken } = usePrivy();
     const [signalStrength, setSignalStrength] = useState<number | null>(null);
     const [authenticity, setAuthenticity] = useState<number | null>(null);
     const [sentiment, setSentiment] = useState<string>('');
@@ -95,15 +99,44 @@ const AccountCard = ({
     const [submitted, setSubmitted] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
 
-    const handleSubmit = () => {
-        setSubmitted(true);
-        if (onFeedbackSubmit) {
-            try {
-                onFeedbackSubmit();
-                showSuccessToast("Feedback submitted, You've entered the reward lottery.");
-            } catch (error) {
-                showErrorToast("Failed to submit feedback");
+    const handleSubmit = async () => {
+        if (!signalStrength || !authenticity || !sentiment) return;
+
+        try {
+            setSubmitted(true);
+
+            // Get access token from Privy
+            const accessToken = await getAccessToken();
+            if (!accessToken) {
+                throw new Error('No access token available');
             }
+
+            // Submit feedback using API service
+            const result = await submitFeedback(accessToken, `task_${id}`, {
+                signalStrength,
+                authenticity,
+                sentiment
+            }, note || '');
+
+            if (!result) {
+                throw new Error('Failed to submit feedback');
+            }
+
+            // Show success message with reward info
+            if (result.rewardGranted) {
+                showSuccessToast(`Feedback submitted! You won ${result.rewardAmount} Xeet reward!`);
+            } else {
+                showSuccessToast("Feedback submitted successfully!");
+            }
+
+            // Call the parent callback
+            if (onFeedbackSubmit) {
+                onFeedbackSubmit();
+            }
+        } catch (error) {
+            console.error('Error submitting feedback:', error);
+            showErrorToast("Failed to submit feedback. Please try again.");
+            setSubmitted(false); // Allow retry
         }
     };
 
@@ -237,6 +270,7 @@ const AccountCard = ({
 };
 
 const PostCard = ({
+    id,
     name,
     username,
     profilePictureUrl,
@@ -249,12 +283,54 @@ const PostCard = ({
     views,
     onFeedbackSubmit,
 }: IPostCard) => {
+    const { getAccessToken } = usePrivy();
     const [signalStrength, setSignalStrength] = useState<number | null>(null);
     const [authenticity, setAuthenticity] = useState<number | null>(null);
     const [sentiment, setSentiment] = useState<string>('');
     const [note, setNote] = useState('');
     const [submitted, setSubmitted] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
+
+    const handleSubmit = async () => {
+        if (!signalStrength || !authenticity || !sentiment) return;
+
+        try {
+            setSubmitted(true);
+
+            // Get access token from Privy
+            const accessToken = await getAccessToken();
+            if (!accessToken) {
+                throw new Error('No access token available');
+            }
+
+            // Submit feedback using API service
+            const result = await submitFeedback(accessToken, `task_${id}`, {
+                signalStrength,
+                authenticity,
+                sentiment
+            }, note || '');
+
+            if (!result) {
+                throw new Error('Failed to submit feedback');
+            }
+
+            // Show success message with reward info
+            if (result.rewardGranted) {
+                showSuccessToast(`Feedback submitted! You won ${result.rewardAmount} Xeet reward!`);
+            } else {
+                showSuccessToast("Feedback submitted successfully!");
+            }
+
+            // Call the parent callback
+            if (onFeedbackSubmit) {
+                onFeedbackSubmit();
+            }
+        } catch (error) {
+            console.error('Error submitting feedback:', error);
+            showErrorToast("Failed to submit feedback. Please try again.");
+            setSubmitted(false); // Allow retry
+        }
+    };
 
     const formatTimeDiff = (timestamp: string) => {
         const now = new Date();
@@ -268,18 +344,6 @@ const PostCard = ({
         if (diffMins < 60) return `${diffMins}m`;
         if (diffHours < 24) return `${diffHours}h`;
         return `${diffDays}d`;
-    };
-
-    const handleSubmit = () => {
-        setSubmitted(true);
-        if (onFeedbackSubmit) {
-            try {
-                onFeedbackSubmit();
-                showSuccessToast("Feedback submitted, You've entered the reward lottery.");
-            } catch (error) {
-                showErrorToast("Failed to submit feedback");
-            }
-        }
     };
 
     const renderRatingButtons = (value: number | null, setValue: (val: number) => void, label: string) => (
