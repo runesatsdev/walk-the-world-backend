@@ -159,6 +159,20 @@
 
       if (!currentSpaceSession || currentSpaceSession.title !== title) {
         startSpaceSession(spaceId, title, host);
+      } else {
+        const sessionData = {
+          ...currentSpaceSession,
+          duration: Math.floor((Date.now() - sessionStartTime) / 1000) // in seconds
+        }
+
+        try {
+          chrome.runtime.sendMessage({
+            type: 'DURATION_UPDATE',
+            data: sessionData
+          });
+        } catch (error) {
+          console.log('Failed to send message to background script:', error);
+        }
       }
     } else if (currentSpaceSession) {
       endSpaceSession();

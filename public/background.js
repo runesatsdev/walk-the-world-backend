@@ -21,6 +21,9 @@
       case 'SPACE_LEFT':
         handleSpaceLeft(message.data);
         break;
+      case 'DURATION_UPDATE':
+        handleDurationUpdate(message.data);
+        break;
       case 'SPACE_JOIN_ATTEMPT':
         handleSpaceJoinAttempt(message.data);
         break;
@@ -80,6 +83,25 @@
     handleNewSession(spaceData, sender);
   }
 
+  function handleDurationUpdate(spaceData) {
+    const spaceDuration = activeSpaces[spaceData.id];
+    if (spaceDuration) {
+
+      activeSpaces[spaceData.id] = {
+        ...spaceDuration
+      };
+
+      saveSpacesData();
+
+      chrome.runtime
+        .sendMessage({
+          type: "SPACE_SESSION_UPDATE",
+          data: { ...spaceDuration, completed: false },
+        })
+        .catch(() => { });
+    }
+  }
+
   function handleNewSession(spaceData, sender) {
     // Start a new space session
     activeSpaces[spaceData.id] = {
@@ -89,6 +111,34 @@
     };
 
     saveSpacesData();
+
+    // Check if this space matches any available spaces and open popup if it does
+    const availableSpaces = getAvailableSpaces();
+    const matchedSpace = availableSpaces.find(space => space.title === spaceData.title);
+
+    if (matchedSpace) {
+      console.log('Matched space found, opening extension popup:', matchedSpace.title);
+      // Open the extension popup
+      if (chrome.action && chrome.action.openPopup) {
+        chrome.action.openPopup();
+      } else {
+        // Fallback for older Chrome versions
+        chrome.browserAction.openPopup();
+      }
+
+      // Send message to switch to spaces tab
+      setTimeout(() => {
+        chrome.runtime.sendMessage({
+          type: 'SWITCH_TO_SPACES_TAB',
+          data: {
+            matchedSpace: matchedSpace,
+            spaceData: spaceData
+          }
+        }).catch(() => {
+          // Ignore errors if popup is not ready yet
+        });
+      }, 500); // Small delay to ensure popup is open
+    }
 
     // Notify popup about the new active session
     try {
@@ -207,11 +257,11 @@
 
     Object.keys(activeSpaces).forEach(spaceId => {
       const space = activeSpaces[spaceId];
-      if (now - space.startTime.getTime() > timeoutMs) {
+      if (now - space.startTime > timeoutMs) {
         // Mark as completed with no reward (timed out)
         const completedSpace = {
           ...space,
-          duration: Math.floor((now - space.startTime.getTime()) / (1000 * 60)),
+          duration: Math.floor((now - space.startTime) / (1000 * 60)),
           rewardEarned: false,
           endTime: new Date()
         };
@@ -248,18 +298,21 @@
     // For now, return mock data that matches the UI
     return [
       {
-        id: "space_001",
-        title: "Web3 & DeFi Discussion",
-        host: "CryptoExpert",
-        hostUsername: "crypto_expert",
+        id: "1mnxeNVXrYvKX",
+        title: "STATE OF TYPE 🚨 EP. 346",
+        host: "Tex",
+        hostUsername: "TexSlays",
         hostProfilePictureUrl: "https://pbs.twimg.com/profile_images/1602122467002155010/MI7V7cqu.png",
-        spacelink: "https://x.com/i/spaces/1RDxlBvXaMXKm",
-        description: "Join us for an in-depth discussion about the latest developments in Web3 and DeFi protocols.",
+        spacelink: "https://x.com/i/spaces/1mnxeNVXrYvKX/peek?s=20",
+        description: "Join us for an in-depth discussion about the latest developments in Web3 and DeFi protocols. We'll cover DeFi yields, NFT markets, and blockchain scalability solutions.",
         participantCount: 1250,
         startedAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
         estimatedDuration: 60,
         rewardAmount: 25,
         isLive: true,
+        category: "Technology",
+        language: "English",
+        tags: ["Web3", "DeFi", "Blockchain", "Crypto"]
       },
       {
         id: "space_002",
@@ -267,13 +320,67 @@
         host: "AIPioneer",
         hostUsername: "ai_pioneer",
         hostProfilePictureUrl: "https://pbs.twimg.com/profile_images/1983681414370619392/oTT3nm5Z_400x400.jpg",
-        spacelink: "https://x.com/i/spaces/1RDxlBvXaMXKm",
-        description: "Exploring the cutting-edge developments in artificial intelligence and machine learning.",
+        spacelink: "https://x.com/i/spaces/1RDxlBvXaMXKm/peek?s=20",
+        description: "Exploring the cutting-edge developments in artificial intelligence and machine learning. From GPT-4 advancements to practical ML applications in business.",
         participantCount: 890,
         startedAt: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
         estimatedDuration: 45,
         rewardAmount: 20,
         isLive: true,
+        category: "Technology",
+        language: "English",
+        tags: ["AI", "Machine Learning", "GPT", "Innovation"]
+      },
+      {
+        id: "space_003",
+        title: "Startup Funding Strategies",
+        host: "VentureBuilder",
+        hostUsername: "venture_builder",
+        hostProfilePictureUrl: "https://pbs.twimg.com/profile_images/1602122467002155010/MI7V7cqu.png",
+        spacelink: "https://x.com/i/spaces/1RDxlBvXaMXKm",
+        description: "Learn from successful entrepreneurs about raising capital, pitch decks, and navigating the startup ecosystem. Real stories and practical advice.",
+        participantCount: 675,
+        startedAt: new Date(Date.now() - 22 * 60 * 1000).toISOString(),
+        estimatedDuration: 50,
+        rewardAmount: 18,
+        isLive: true,
+        category: "Business",
+        language: "English",
+        tags: ["Startups", "Funding", "Entrepreneurship", "Venture Capital"]
+      },
+      {
+        id: "space_004",
+        title: "Climate Tech Innovation",
+        host: "GreenTechLeader",
+        hostUsername: "green_tech",
+        hostProfilePictureUrl: "https://pbs.twimg.com/profile_images/1983681414370619392/oTT3nm5Z_400x400.jpg",
+        spacelink: "https://x.com/i/spaces/1RDxlBvXaMXKm",
+        description: "Discussing breakthrough technologies in renewable energy, carbon capture, and sustainable solutions for climate change.",
+        participantCount: 543,
+        startedAt: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
+        estimatedDuration: 40,
+        rewardAmount: 15,
+        isLive: true,
+        category: "Environment",
+        language: "English",
+        tags: ["Climate", "Renewable Energy", "Sustainability", "Innovation"]
+      },
+      {
+        id: "space_005",
+        title: "Remote Work Culture",
+        host: "WorkLifeBalance",
+        hostUsername: "work_balance",
+        hostProfilePictureUrl: "https://pbs.twimg.com/profile_images/1602122467002155010/MI7V7cqu.png",
+        spacelink: "https://x.com/i/spaces/1RDxlBvXaMXKm",
+        description: "Exploring the future of work, remote team management, and building strong company culture in distributed environments.",
+        participantCount: 432,
+        startedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+        estimatedDuration: 35,
+        rewardAmount: 12,
+        isLive: true,
+        category: "Business",
+        language: "English",
+        tags: ["Remote Work", "Culture", "Management", "Future of Work"]
       }
     ];
   }

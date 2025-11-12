@@ -4,16 +4,34 @@ import { ToastContainer } from "react-toastify";
 import { FullScreenLoader } from "./components/ui/fullscreen-loader";
 // import { Header } from "./components/ui/header";
 import { ArrowLeftIcon } from "@heroicons/react/16/solid";
-// import UserObject from "./components/sections/user-object";
 import CardList from "./components/sections/card-list";
 import SpacesTracking from "./components/sections/spaces-tracking";
 import ReportFlag from "./components/sections/report-flag";
 import UserObject from "./components/sections/user-object";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function App() {
   const { ready, authenticated, logout, login, user } = usePrivy();
   const [activeTab, setActiveTab] = useState<'signals' | 'spaces' | 'report' | 'rewards'>('signals');
+
+  // Listen for messages to switch tabs
+  useEffect(() => {
+    if (chrome?.runtime?.onMessage) {
+      const messageListener = (message: any) => {
+        if (message.type === 'SWITCH_TO_SPACES_TAB') {
+          console.log('Switching to spaces tab due to matched space:', message.data);
+          setActiveTab('spaces');
+        }
+      };
+
+      chrome.runtime.onMessage.addListener(messageListener);
+
+      // Cleanup listener on unmount
+      return () => {
+        chrome.runtime.onMessage.removeListener(messageListener);
+      };
+    }
+  }, []);
 
   if (!ready) {
     return <FullScreenLoader />;

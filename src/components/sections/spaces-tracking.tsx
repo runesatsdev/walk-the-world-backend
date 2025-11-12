@@ -62,6 +62,7 @@ const SpacesTracking = () => {
         const completedSpaces = Array.isArray(result.completedSpaces) ? result.completedSpaces : [];
         setActiveSessions(activeSpaces);
         setCompletedSessions(completedSpaces);
+        setTrackingSpaceTitle(activeSpaces.length > 0 ? activeSpaces[0].title : null);
         setLoading(false);
       });
     } else {
@@ -184,7 +185,6 @@ const SpacesTracking = () => {
       endTime: sessionData.completed ? new Date() : undefined,
       isClaimable: sessionData.completed ? (sessionData.duration >= 1) : undefined
     };
-
     if (sessionData.completed) {
       setCompletedSessions(prev => {
         const updated = [...prev, session];
@@ -292,7 +292,7 @@ const SpacesTracking = () => {
         <h3 className="text-md font-medium mb-3 text-blue-600">🔥 Live Spaces</h3>
         <div className="space-y-3">
           {availableSpaces.filter(space => space.isLive).map(space => (
-            <div key={space.id} className="bg-[#9c63fa] border border-purple-200 rounded-lg p-4">
+            <div key={space.id} className={`bg-[#9c63fa] border border-purple-200 rounded-lg p-4 transition-all duration-300 ${trackingSpaceTitle === space.title ? 'ping-animation opacity-60' : ''}`}>
               <h4 className="font-semibold text-base mb-1 text-white">{space.title}</h4>
               <div className="flex items-center space-x-2 mb-2">
                 <img
@@ -328,7 +328,7 @@ const SpacesTracking = () => {
                 <svg viewBox="0 0 24 24" aria-hidden="true" className="w-4 h-4" style={{ color: 'rgb(15, 20, 25)' }}>
                   <g><path d="M21 12L4 2v20l17-10z"></path></g>
                 </svg>
-                {trackingSpaceTitle === space.title ? '🎯 Tracking for Rewards' : `Join Space & Earn +${space.rewardAmount} Xeet`}
+                {trackingSpaceTitle === space.title ? `🎯 Tracking for Rewards ${Math.floor(activeSessions[0].duration / 60)}` : `Join Space & Earn +${space.rewardAmount} Xeet`}
               </button>
             </div>
           ))}
@@ -336,7 +336,7 @@ const SpacesTracking = () => {
       </div>
 
       {/* Active Sessions */}
-      {activeSessions.length > 0 && (
+      {/* {activeSessions.length > 0 && (
         <div className="mb-6">
           <h3 className="text-md font-medium mb-2 text-green-600">🎯 Active Tracking</h3>
           {activeSessions.map(session => (
@@ -348,7 +348,7 @@ const SpacesTracking = () => {
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-medium text-green-600">
-                    {formatDuration(Math.floor((Date.now() - session.startTime.getTime()) / (1000 * 60)))}
+                    {formatDuration(session.duration)}
                   </div>
                   <div className="text-xs text-gray-500">elapsed</div>
                 </div>
@@ -356,7 +356,7 @@ const SpacesTracking = () => {
             </div>
           ))}
         </div>
-      )}
+      )} */}
 
       {/* Completed Sessions */}
       <div>

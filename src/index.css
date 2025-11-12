@@ -85,3 +85,19 @@ body {
     opacity: 1;
   }
 }
+
+@keyframes ping-border {
+  0% {
+    box-shadow: 0 0 0 0 rgba(156, 99, 250, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(156, 99, 250, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(156, 99, 250, 0);
+  }
+}
+
+.ping-animation {
+  animation: ping-border 2s ease-in-out infinite;
+}
