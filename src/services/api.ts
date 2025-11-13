@@ -1,6 +1,6 @@
 // API service for backend communication
 import axios from 'axios';
-import type { TaskData, FeedbackResponse, ClaimResponse } from './types';
+import type { TaskData, FeedbackResponse, ClaimResponse, AdminReportRequest, AdminReportResponse } from './types';
 
 const API_BASE_URL = 'http://localhost:5000/api/v1/extension';
 
@@ -71,6 +71,24 @@ export const claimReward = async (accessToken: string, rewardId: string): Promis
     return response.data;
   } catch (error) {
     console.error('Error claiming reward:', error);
+    return null;
+  }
+};
+
+export const submitAdminReport = async (accessToken: string, reportData: AdminReportRequest): Promise<AdminReportResponse | null> => {
+  try {
+    const response = await axios({
+      method: 'post',
+      url: `${API_BASE_URL}/admin/reports`,
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      data: reportData,
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Error submitting admin report:', error);
     return null;
   }
 };

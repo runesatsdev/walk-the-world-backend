@@ -35,3 +35,24 @@ export interface ClaimResponse {
   success: boolean;
   amount: number;
 }
+
+export interface AdminReportRequest {
+  reason: string;
+  customNote?: string;
+  targetUserId?: string;
+  tweetId?: string;
+  currentMetrics?: {
+    accountDetails?: any;
+    postMetrics?: any;
+  };
+  reporterId: string;
+  timestamp: string;
+  screenshot?: string;
+  url: string;
+}
+
+export interface AdminReportResponse {
+  success: boolean;
+  reportId: string;
+  message: string;
+}

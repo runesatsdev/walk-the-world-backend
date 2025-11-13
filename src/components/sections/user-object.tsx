@@ -115,7 +115,7 @@ const UserObject = () => {
     <div className="w-full md:w-[400px] bg-white flex flex-col border-l border-[#E2E3F0] p-4 h-[calc(100vh-120px)] overflow-y-auto">
       <h2 className="text-lg font-semibold mb-4">Rewards</h2>
       <p className="text-sm text-gray-600 mb-6">
-        Track your seet rewards earned from Space participation and content engagement. Claim rewards to add them to your wallet and monitor your earning history.
+        Track your Xeet rewards earned from Space participation and content engagement. Claim rewards to add them to your wallet and monitor your earning history.
       </p>
 
       {/* Summary Stats */}
