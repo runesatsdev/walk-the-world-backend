@@ -1,4 +1,8 @@
-// Content script for X.com to detect Spaces and enable reporting
+// Content script for X.com/Twitter.com
+// Handles both Space tracking and page data extraction
+// This runs in the context of web pages
+
+// ===== SPACE TRACKING FUNCTIONALITY =====
 (function () {
   'use strict';
 
@@ -34,7 +38,6 @@
     // Specific selectors based on actual X Spaces DOM structure
     const spaceDockExpanded = document.querySelector('[data-testid="SpaceDockExpanded"]');
     const spaceDock = document.querySelector('[data-testid="SpaceDock"]');
-    // const leaveButton = document.querySelector('button span span span:contains("Leave")');
     const recIndicator = document.querySelector('[aria-label="Recording active"]');
     const spaceTitleElement = document.querySelector('[data-testid="tweetText"]');
 
@@ -58,7 +61,6 @@
     }
 
     // Additional confirmation: Leave button indicates active participation
-    // Use text content matching for the Leave button
     const allSpans = document.querySelectorAll('span');
     let leaveButtonFound = false;
     for (const span of allSpans) {
@@ -104,34 +106,6 @@
       spaceTitle = extractTextWithEmojis(spaceTitleElement) || 'Unknown Space';
       spaceHost = extractHost();
     }
-
-    // // Check for other Space-related elements as fallback
-    // if (!spaceFound) {
-    //   const fallbackSelectors = [
-    //     '[data-testid*="space"]',
-    //     '[role="group"][aria-label*="Space"]',
-    //     '[data-testid="space-title"]',
-    //     'h1[data-testid*="space"]',
-    //     '[data-testid="SpacePageHeader"]',
-    //     '[data-testid="SpaceTitle"]',
-    //     '[data-testid="SpaceHost"]'
-    //   ];
-
-    //   for (const selector of fallbackSelectors) {
-    //     const elements = document.querySelectorAll(selector);
-    //     if (elements.length > 0) {
-    //       spaceFound = true;
-    //       console.log('Space detected via fallback selector:', selector);
-    //       if (!spaceTitle && (selector.includes('title') || selector.includes('Title'))) {
-    //         spaceTitle = elements[0].textContent;
-    //       }
-    //       if (!spaceHost && (selector.includes('host') || selector.includes('Host'))) {
-    //         spaceHost = elements[0].textContent;
-    //       }
-    //       break;
-    //     }
-    //   }
-    // }
 
     // Check shadow DOM as last resort
     if (!spaceFound) {
@@ -187,48 +161,37 @@
 
   function extractHost() {
     // Look for the specific DOM structure with "Host" label and user info
-    // Based on the provided DOM structure, find spans with "Host" text
     const hostLabelSpans = document.querySelectorAll('span');
     for (const span of hostLabelSpans) {
       if (span.textContent?.trim() === 'Host') {
-        // Found the "Host" label, now look for the associated user info
-        // The host name should be in a nearby container with user avatar and name
         const hostContainer = span.closest('div[class*="r-1awozwy r-18u37iz r-1777fci r-bnwqim"]');
         if (hostContainer) {
-          // Look for the user name in the associated container
-          // The structure has the user avatar and name in a preceding sibling or parent
           const userInfoContainer = hostContainer.previousElementSibling ||
             hostContainer.parentElement?.previousElementSibling;
 
           if (userInfoContainer) {
-            // Look for spans containing the user name (typically with emoji and verification)
             const userNameSpans = userInfoContainer.querySelectorAll('span');
             for (const nameSpan of userNameSpans) {
               const text = nameSpan.textContent?.trim();
               if (text && text.length > 0 && text !== 'Host' && !text.includes('Verified account')) {
-                // For spans with multiple direct child spans (like the username structure), collect only direct children
                 const directChildSpans = Array.from(nameSpan.children).filter(child => child.tagName === 'SPAN');
                 if (directChildSpans.length > 1) {
-                  // Join only direct child span texts to avoid duplication
                   const fullText = directChildSpans
                     .map(span => span.textContent?.trim() || '')
                     .join('')
                     .trim();
                   if (fullText && fullText.length > 0) {
-                    // Clean up the username (remove extra spaces)
                     const cleanName = fullText.replace(/\s+/g, ' ').trim();
                     console.log('Extracted host name from direct child spans:', cleanName);
                     return cleanName;
                   }
                 } else if (directChildSpans.length === 1) {
-                  // Single direct child span
                   const childText = directChildSpans[0].textContent?.trim();
                   if (childText && childText.length > 0) {
                     console.log('Extracted host name from single child span:', childText);
                     return childText;
                   }
                 } else {
-                  // No direct child spans, use the span's own text content
                   const cleanName = text.split(' ')[0].replace(/[^\w\s@]/g, '').trim();
                   if (cleanName && cleanName.length > 0) {
                     console.log('Extracted host name from span text:', cleanName);
@@ -238,7 +201,6 @@
               }
             }
 
-            // Alternative: look for the href attribute in links within the user container
             const userLink = userInfoContainer.querySelector('a[href*="/"]');
             if (userLink) {
               const username = userLink.getAttribute('href')?.split('/').pop();
@@ -252,7 +214,7 @@
       }
     }
 
-    // Fallback methods if the specific structure isn't found
+    // Fallback methods
     const hostSelectors = [
       '[data-testid="space-host"]',
       '[data-testid="SpaceHost"]',
@@ -279,7 +241,6 @@
       }
     }
 
-    // Last resort: look for any element with user-like content near host indicators
     const allElements = document.querySelectorAll('[data-testid*="UserAvatar"], a[href*="/"]');
     for (const element of allElements) {
       const href = element.getAttribute('href');
@@ -297,7 +258,6 @@
   }
 
   function startSpaceSession(spaceId, title, host) {
-    // End any existing session before starting a new one
     if (currentSpaceSession && currentSpaceSession.title !== title) {
       endSpaceSession();
     }
@@ -311,7 +271,6 @@
 
     sessionStartTime = Date.now();
 
-    // Notify background script (only if chrome.runtime is available and we have the correct extension ID)
     if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
       try {
         chrome.runtime.sendMessage({
@@ -340,7 +299,6 @@
         completed: true
       };
 
-      // Notify background script (only if chrome.runtime is available and we have the correct extension ID)
       if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
         try {
           chrome.runtime.sendMessage({
@@ -361,55 +319,25 @@
     sessionStartTime = null;
   }
 
-  // // Add report button overlay
-  // function addReportOverlay() {
-  //   // Remove existing overlay if present
-  //   const existingOverlay = document.getElementById('xeet-report-overlay');
-  //   if (existingOverlay) existingOverlay.remove();
+  // Initialize space tracking
+  function initSpaceTracking() {
+    detectSpace();
+    initMutationObserver();
+    setInterval(detectSpace, 10000); // Check every 10 seconds as fallback
 
-  //   const overlay = document.createElement('div');
-  //   overlay.id = 'xeet-report-overlay';
-  //   overlay.innerHTML = `
-  //     <div style="
-  //       position: fixed;
-  //       top: 20px;
-  //       right: 20px;
-  //       z-index: 10000;
-  //       background: white;
-  //       border: 2px solid #dc2626;
-  //       border-radius: 8px;
-  //       padding: 8px;
-  //       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  //       cursor: pointer;
-  //       font-size: 12px;
-  //       color: #dc2626;
-  //       font-weight: bold;
-  //     " onclick="window.postMessage({type: 'XEET_REPORT_CLICK'}, '*')">
-  //       🚩 Report
-  //     </div>
-  //   `;
-  //   document.body.appendChild(overlay);
-  // }
-
-  // Listen for report button clicks
-  window.addEventListener('message', (event) => {
-    if (event.data.type === 'XEET_REPORT_CLICK') {
-      // Open extension popup or send message to background (only if available and we have the correct extension ID)
-      if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
-        try {
-          chrome.runtime.sendMessage({
-            type: 'OPEN_REPORT_TAB'
-          });
-        } catch (error) {
-          console.log('Failed to send report message:', error);
-        }
-      } else {
-        console.log('Chrome extension APIs not available or incorrect extension ID, cannot open report tab');
+    // Listen for page navigation
+    let currentUrl = window.location.href;
+    setInterval(() => {
+      if (window.location.href !== currentUrl) {
+        currentUrl = window.location.href;
+        setTimeout(() => {
+          initMutationObserver();
+          detectSpace();
+        }, 2000);
       }
-    }
-  });
+    }, 1000);
+  }
 
-  // Initialize MutationObserver for dynamic DOM changes
   function initMutationObserver() {
     if (mutationObserver) {
       mutationObserver.disconnect();
@@ -419,7 +347,6 @@
       let shouldCheck = false;
       for (const mutation of mutations) {
         if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-          // Check if added nodes contain Space-related elements
           for (const node of mutation.addedNodes) {
             if (node.nodeType === Node.ELEMENT_NODE) {
               const element = node;
@@ -438,13 +365,11 @@
       }
 
       if (shouldCheck) {
-        // Debounce the detection to avoid excessive calls
         clearTimeout(window.spaceDetectionTimeout);
         window.spaceDetectionTimeout = setTimeout(detectSpace, 500);
       }
     });
 
-    // Observe the entire document body for changes
     mutationObserver.observe(document.body, {
       childList: true,
       subtree: true,
@@ -453,49 +378,209 @@
     });
   }
 
-  // Initialize
-  function init() {
-    // Initial detection
-    detectSpace();
+  // ===== PAGE DATA EXTRACTION FUNCTIONALITY =====
 
-    // Set up MutationObserver for dynamic changes
-    initMutationObserver();
-
-    // Fallback periodic check (less frequent)
-    setInterval(detectSpace, 10000); // Check every 10 seconds as fallback
-
-    // Add report overlay
-    // addReportOverlay();
-
-    // Listen for page navigation
-    let currentUrl = window.location.href;
-    setInterval(() => {
-      if (window.location.href !== currentUrl) {
-        currentUrl = window.location.href;
-        // Reinitialize observer on navigation
-        setTimeout(() => {
-          initMutationObserver();
-          detectSpace();
-          // addReportOverlay();
-        }, 2000); // Wait for page to load
-      }
-    }, 1000);
-  }
-
-  // Start when DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-
-  // Cleanup on page unload
-  window.addEventListener('beforeunload', () => {
-    if (mutationObserver) {
-      mutationObserver.disconnect();
+function extractPageData() {
+  try {
+    // Check if we're on a Twitter/X page
+    if (!window.location.hostname.includes('x.com') &&
+        !window.location.hostname.includes('twitter.com')) {
+      return null;
     }
-    if (currentSpaceSession) {
-      endSpaceSession();
+
+    const data = {
+      url: window.location.href,
+      timestamp: new Date().toISOString()
+    };
+
+    // Extract user profile data
+    const userNameElement = document.querySelector('[data-testid="User-Name"]');
+    if (userNameElement) {
+      data.userName = userNameElement.textContent?.trim();
+    }
+
+    const userHandleElement = document.querySelector('[role="link"][href*="/"]');
+    if (userHandleElement?.href) {
+      const handle = userHandleElement.href.split('/').pop();
+      if (handle && !handle.includes('status')) {
+        data.userHandle = handle;
+      }
+    }
+
+    // Extract follower/following counts using specific link selectors
+    const followingLink = document.querySelector('a[href*="/following"]');
+    if (followingLink) {
+      const followingText = followingLink.textContent || '';
+      // Extract number from spans within the link
+      const numberSpans = followingLink.querySelectorAll('span');
+      for (const span of numberSpans) {
+        const spanText = span.textContent?.trim() || '';
+        if (spanText && /^\d+(\.\d+)?[KMB]?$/i.test(spanText)) {
+          data.following = parseCount(spanText);
+          break;
+        }
+      }
+    }
+
+    const followersLink = document.querySelector('a[href*="/verified_followers"]');
+    if (followersLink) {
+      const followersText = followersLink.textContent || '';
+      // Extract number from spans within the link
+      const numberSpans = followersLink.querySelectorAll('span');
+      for (const span of numberSpans) {
+        const spanText = span.textContent?.trim() || '';
+        if (spanText && /^\d+(\.\d+)?[KMB]?$/i.test(spanText)) {
+          data.followers = parseCount(spanText);
+          break;
+        }
+      }
+    }
+
+    // Extract post metrics (likes, reposts, etc.)
+    const metrics = {};
+
+    // Like count
+    const likeButton = document.querySelector('[data-testid*="like"]');
+    if (likeButton) {
+      const ariaLabel = likeButton.getAttribute('aria-label') || '';
+      const match = ariaLabel.match(/(\d+(?:\.\d+)?[KMB]?)/);
+      if (match) {
+        metrics.likes = parseCount(match[1]);
+      }
+    }
+
+    // Repost count
+    const repostButton = document.querySelector('[data-testid*="retweet"]');
+    if (repostButton) {
+      const ariaLabel = repostButton.getAttribute('aria-label') || '';
+      const match = ariaLabel.match(/(\d+(?:\.\d+)?[KMB]?)/);
+      if (match) {
+        metrics.reposts = parseCount(match[1]);
+      }
+    }
+
+    // Reply count
+    const replyButton = document.querySelector('[data-testid*="reply"]');
+    if (replyButton) {
+      const ariaLabel = replyButton.getAttribute('aria-label') || '';
+      const match = ariaLabel.match(/(\d+(?:\.\d+)?[KMB]?)/);
+      if (match) {
+        metrics.replies = parseCount(match[1]);
+      }
+    }
+
+    // View count
+    const viewElement = document.querySelector('[data-testid*="view"]');
+    if (viewElement) {
+      const ariaLabel = viewElement.getAttribute('aria-label') || '';
+      const match = ariaLabel.match(/(\d+(?:\.\d+)?[KMB]?)/);
+      if (match) {
+        metrics.views = parseCount(match[1]);
+      }
+    }
+
+    if (Object.keys(metrics).length > 0) {
+      data.postMetrics = metrics;
+    }
+
+    // Extract profile image
+    const profileImg = document.querySelector('article img[alt*="profile"]') ||
+                      document.querySelector('[data-testid="Tweet-User-Avatar"] img') ||
+                      document.querySelector('[data-testid="User-Profile-Avatar"] img');
+
+    if (profileImg?.src) {
+      data.profileImage = profileImg.src;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error extracting page data:', error);
+    return null;
+  }
+}
+
+function parseCount(text) {
+  if (!text) return 0;
+
+  // Remove commas and handle K/M/B suffixes
+  const cleaned = text.replace(/,/g, '').toUpperCase();
+
+  if (cleaned.endsWith('K')) {
+    return Math.round(parseFloat(cleaned.slice(0, -1)) * 1000);
+  } else if (cleaned.endsWith('M')) {
+    return Math.round(parseFloat(cleaned.slice(0, -1)) * 1000000);
+  } else if (cleaned.endsWith('B')) {
+    return Math.round(parseFloat(cleaned.slice(0, -1)) * 1000000000);
+  }
+
+  return parseInt(cleaned) || 0;
+}
+
+// Listen for messages from the extension
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'EXTRACT_PAGE_DATA') {
+    const data = extractPageData();
+    sendResponse({ data });
+  }
+});
+
+// Also send data proactively when DOM changes (for dynamic content)
+let lastUrl = window.location.href;
+new MutationObserver(() => {
+  if (window.location.href !== lastUrl) {
+    lastUrl = window.location.href;
+    // Page changed, could send update if needed
+  }
+}).observe(document.body, { childList: true, subtree: true });
+
+// ===== INITIALIZATION =====
+
+// Initialize both functionalities
+function init() {
+  // Initialize space tracking
+  initSpaceTracking();
+
+  // Listen for messages from the extension
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'EXTRACT_PAGE_DATA') {
+      const data = extractPageData();
+      sendResponse({ data });
     }
   });
+
+  // Listen for report button clicks
+  window.addEventListener('message', (event) => {
+    if (event.data.type === 'XEET_REPORT_CLICK') {
+      if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
+        try {
+          chrome.runtime.sendMessage({
+            type: 'OPEN_REPORT_TAB'
+          });
+        } catch (error) {
+          console.log('Failed to send report message:', error);
+        }
+      } else {
+        console.log('Chrome extension APIs not available or incorrect extension ID, cannot open report tab');
+      }
+    }
+  });
+}
+
+// Start when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+  if (mutationObserver) {
+    mutationObserver.disconnect();
+  }
+  if (currentSpaceSession) {
+    endSpaceSession();
+  }
+});
+
 })();

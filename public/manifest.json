@@ -7,8 +7,8 @@
   "host_permissions": ["https://auth.privy.io/*", "https://x.com/*"],
   "content_scripts": [
     {
-      "matches": ["https://x.com/*"],
-      "js": ["content.js"],
+      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "js": ["content-script.js"],
       "run_at": "document_idle"
     }
   ],

@@ -3,6 +3,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { showSuccessToast, showErrorToast } from "../ui/custom-toast";
 import { submitAdminReport } from "../../services/api";
 import ReportModal from "../ui/report-modal";
+import PageSnapshot from "../ui/page-snapshot";
 
 interface ReportData {
   reason: string;
@@ -177,6 +178,9 @@ const ReportFlag = () => {
         <p className="text-sm text-gray-600 mb-6">
           Help maintain a safe and positive X community. Report spam, fraud, harassment, or rule violations from profiles, posts, or Spaces. Your reports help protect users and improve platform safety.
         </p>
+
+        {/* Page Snapshot */}
+        <PageSnapshot />
 
         {/* Report Button */}
         <div className="mb-6">
