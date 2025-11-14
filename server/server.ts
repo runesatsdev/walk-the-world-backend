@@ -97,6 +97,21 @@ interface Report {
   timestamp: string;
 }
 
+interface SpaceTrackingEntry {
+  id: string;
+  userId: string;
+  spaceId: string;
+  title: string;
+  host: string;
+  // hostUsername: string;
+  // spacelink: string;
+  startTime: string;
+  endTime: string;
+  duration: number; // in minutes
+  rewardAmount: number;
+  timestamp: string;
+}
+
 // Authentication middleware
 const authenticateToken = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   try {
@@ -129,6 +144,7 @@ let users: any = {};
 let feedback: FeedbackEntry[] = [];
 let reports: Report[] = [];
 let rewards: Reward[] = [];
+let spaceTracking: SpaceTrackingEntry[] = [];
 
 // Mock signals data (candidate posts/accounts for feedback)
 const mockSignals = [
@@ -361,6 +377,72 @@ app.post('/api/v1/extension/reports', (req: express.Request, res: express.Respon
     reportId: report.id,
     rewardGranted,
     rewardAmount: rewardGranted ? rewards[rewards.length - 1].amount : 0
+  });
+});
+
+// POST /api/v1/extension/spaces/submit
+app.post('/api/v1/extension/spaces/submit', authenticateToken, (req: express.Request, res: express.Response) => {
+  const {
+    spaceId,
+    title,
+    host,
+    hostUsername,
+    spacelink,
+    startTime,
+    endTime,
+    duration,
+    rewardAmount
+  } = req.body;
+  const userId = req.user!.userId;
+
+  if (!spaceId || !title || !duration) {
+    return res.status(400).json({ error: 'Missing required fields: spaceId, title, duration' });
+  }
+
+  // Check eligibility for grant xeet (duration >= 1 minute)
+  const eligibleForGrant = duration >= 1;
+
+  const spaceEntry: SpaceTrackingEntry = {
+    id: uuidv4(),
+    userId,
+    spaceId,
+    title,
+    host: host || '',
+    // hostUsername: hostUsername || '',
+    // spacelink: spacelink || '',
+    startTime,
+    endTime,
+    duration,
+    rewardAmount: rewardAmount || 0,
+    timestamp: new Date().toISOString()
+  };
+
+  console.log("New space tracking submitted:", spaceEntry);
+
+  spaceTracking.push(spaceEntry);
+
+  // Mock reward logic for eligible spaces
+  let rewardGranted = false;
+  let rewardAmountGranted = 0;
+  if (eligibleForGrant && Math.random() < config.rewardProbabilities.space) {
+    rewardGranted = true;
+    rewardAmountGranted = rewardAmount || Math.floor(Math.random() * 25) + 1;
+    const reward: Reward = {
+      id: uuidv4(),
+      userId,
+      amount: rewardAmountGranted,
+      reason: 'space',
+      timestamp: new Date().toISOString()
+    };
+    rewards.push(reward);
+  }
+
+  res.json({
+    success: true,
+    spaceTrackingId: spaceEntry.id,
+    eligibleForGrant,
+    rewardGranted,
+    rewardAmount: rewardAmountGranted
   });
 });
 

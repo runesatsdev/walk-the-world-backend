@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { formatDurationMin, formatTimeAgo, formatDurationSec } from "../../services/lib";
+import { submitSpaceTracking } from "../../services/api";
+import { usePrivy } from "@privy-io/react-auth";
 
 interface SpaceSession {
   id: string;
@@ -34,6 +36,7 @@ interface AvailableSpace {
 }
 
 const SpacesTracking = () => {
+  const { getAccessToken } = usePrivy();
   const [activeSessions, setActiveSessions] = useState<SpaceSession[]>([]);
   const [completedSessions, setCompletedSessions] = useState<SpaceSession[]>([]);
   const [availableSpaces, setAvailableSpaces] = useState<AvailableSpace[]>([]);
@@ -210,6 +213,12 @@ const SpacesTracking = () => {
       if (trackingSpaceTitle === session.title) {
         setTrackingSpaceTitle(null);
       }
+
+      // Submit space tracking if eligible for grant xeet
+      if (session.isClaimable) {
+        setTrackingSpaceTitle(null);
+        submitSpaceTrackingData(session);
+      }
     } else {
       setActiveSessions(prev => {
         const existing = prev.find(s => s.id === session.id);
@@ -226,6 +235,34 @@ const SpacesTracking = () => {
       });
       // Update tracking title when there's an active session
       setTrackingSpaceTitle(session.title);
+    }
+  };
+
+  const submitSpaceTrackingData = async (session: SpaceSession) => {
+    try {
+      const accessToken = await getAccessToken();
+      if (accessToken && session.endTime) {
+        const response = await submitSpaceTracking(accessToken, {
+          spaceId: session.id,
+          title: session.title,
+          host: session.host,
+          hostUsername: session.hostUsername,
+          spacelink: session.spacelink,
+          startTime: session.startTime.toISOString(),
+          endTime: session.endTime.toISOString(),
+          duration: session.duration,
+          rewardAmount: session.rewardAmount
+        });
+
+        if (response?.success) {
+          console.log('Space tracking submitted successfully:', response);
+          // Could show a success message or update UI
+        } else {
+          console.error('Failed to submit space tracking');
+        }
+      }
+    } catch (error) {
+      console.error('Error submitting space tracking:', error);
     }
   };
 

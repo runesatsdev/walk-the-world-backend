@@ -289,7 +289,7 @@
 
   function endSpaceSession() {
     if (currentSpaceSession && sessionStartTime) {
-      const duration = Math.floor((Date.now() - sessionStartTime) / (1000 * 60)); // in minutes
+      const duration = Math.floor((Date.now() - sessionStartTime) / (1000 * 10)); // in minutes
       const rewardEarned = duration >= MIN_DURATION_MINUTES;
 
       const sessionData = {

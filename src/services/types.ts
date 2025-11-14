@@ -56,3 +56,23 @@ export interface AdminReportResponse {
   reportId: string;
   message: string;
 }
+
+export interface SpaceTrackingRequest {
+  spaceId: string;
+  title: string;
+  host?: string;
+  hostUsername?: string;
+  spacelink?: string;
+  startTime: string;
+  endTime: string;
+  duration: number;
+  rewardAmount?: number;
+}
+
+export interface SpaceTrackingResponse {
+  success: boolean;
+  spaceTrackingId: string;
+  eligibleForGrant: boolean;
+  rewardGranted: boolean;
+  rewardAmount: number;
+}
