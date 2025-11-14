@@ -84,7 +84,6 @@ const FeedbackForm = ({
 
       if (!result) throw new Error("Submission failed");
       console.log("Feedback submission result:", result);
-      console.log("chrome storage-->>:", chrome?.storage?.local);
 
       // store reward history
       if (chrome?.storage?.local) {

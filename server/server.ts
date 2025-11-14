@@ -30,7 +30,7 @@ app.use(cors({
   credentials: true // Allow credentials (cookies)
 }));
 app.use(cookieParser());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '10mb' }));
 
 // Initialize Privy client
 const privy = new PrivyClient(
@@ -88,10 +88,11 @@ interface Reward {
 
 interface Report {
   id: string;
-  userId: string;
-  targetId: string;
+  reporterId: string;
+  targetUserId: string;
+  tweetId: string | null;
   reason: string;
-  note: string;
+  customNote: string | null;
   screenshot?: string;
   timestamp: string;
 }
@@ -231,6 +232,8 @@ app.get('/api/v1/extension/tasks/next', authenticateToken, (req: express.Request
     });
   }
 
+  console.log("Returning signal:", randomSignal);
+
   // Return feedback task with signal data
   res.json({
     id: `task_${randomSignal.id}`,
@@ -270,6 +273,7 @@ app.post('/api/v1/extension/feedback', authenticateToken, (req: express.Request,
     comment: comment || '',
     timestamp: new Date().toISOString()
   };
+  console.log("New feedback submitted:", feedbackEntry);
 
   feedback.push(feedbackEntry);
 
@@ -318,21 +322,24 @@ app.post('/api/v1/extension/rewards/claim', authenticateToken, (req: express.Req
 
 // POST /api/v1/extension/reports
 app.post('/api/v1/extension/reports', (req: express.Request, res: express.Response) => {
-  const { userId, targetId, reason, note, screenshot } = req.body;
+  const { reporterId, targetUserId, tweetId, reason, customNote, screenshot } = req.body;
 
-  if (!userId || !targetId || !reason) {
+  if (!reporterId || !targetUserId || !reason) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
   const report: Report = {
     id: uuidv4(),
-    userId,
-    targetId,
+    reporterId,
+    targetUserId,
+    tweetId,
     reason,
-    note: note || '',
+    customNote,
     screenshot: screenshot || null,
     timestamp: new Date().toISOString()
   };
+
+  console.log("New report submitted:", report);
 
   reports.push(report);
 
@@ -341,7 +348,7 @@ app.post('/api/v1/extension/reports', (req: express.Request, res: express.Respon
   if (rewardGranted) {
     const reward: Reward = {
       id: uuidv4(),
-      userId,
+      userId: reporterId,
       amount: Math.floor(Math.random() * 5) + 1,
       reason: 'report',
       timestamp: new Date().toISOString()

@@ -117,6 +117,8 @@ const ReportFlag = () => {
         } catch (error) {
           console.log("Screenshot capture failed:", error);
         }
+      } else {
+        screenshot = "";
       }
 
       const reportData = {
@@ -187,7 +189,7 @@ const ReportFlag = () => {
           <button
             onClick={() => setIsModalOpen(true)}
             disabled={isReporting}
-            className="w-full bg-red-500 text-white px-4 py-3 rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="w-full bg-red-500 text-white px-4 py-3 rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium cursor-pointer"
           >
             📋 Report Content
           </button>

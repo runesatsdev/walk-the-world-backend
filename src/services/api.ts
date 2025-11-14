@@ -79,7 +79,7 @@ export const submitAdminReport = async (accessToken: string, reportData: AdminRe
   try {
     const response = await axios({
       method: 'post',
-      url: `${API_BASE_URL}/admin/reports`,
+      url: `${API_BASE_URL}/reports`,
       headers: {
         'Authorization': `Bearer ${accessToken}`,
       },
