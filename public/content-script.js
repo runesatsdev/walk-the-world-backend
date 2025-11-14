@@ -380,165 +380,145 @@
 
   // ===== PAGE DATA EXTRACTION FUNCTIONALITY =====
 
-function extractPageData() {
-  try {
-    // Check if we're on a Twitter/X page
-    if (!window.location.hostname.includes('x.com') &&
+  function parseCount(text) {
+    if (!text) return 0;
+
+    // Remove commas and handle K/M/B suffixes
+    const cleaned = text.replace(/,/g, '').toUpperCase();
+
+    if (cleaned.endsWith('K')) {
+      return Math.round(parseFloat(cleaned.slice(0, -1)) * 1000);
+    } else if (cleaned.endsWith('M')) {
+      return Math.round(parseFloat(cleaned.slice(0, -1)) * 1000000);
+    } else if (cleaned.endsWith('B')) {
+      return Math.round(parseFloat(cleaned.slice(0, -1)) * 1000000000);
+    }
+
+    return parseInt(cleaned) || 0;
+  }
+
+  function extractPageData() {
+    try {
+      // Check if we're on a Twitter/X page
+      if (!window.location.hostname.includes('x.com') &&
         !window.location.hostname.includes('twitter.com')) {
+        return null;
+      }
+
+      const data = {
+        url: window.location.href,
+        timestamp: new Date().toISOString()
+      };
+
+      // Extract user profile data
+      const userNameElement = document.querySelector('[data-testid="User-Name"]');
+      if (userNameElement) {
+        data.userName = userNameElement.textContent?.trim();
+      }
+
+      const userHandleElement = document.querySelector('[role="link"][href*="/"]');
+      if (userHandleElement?.href) {
+        const handle = userHandleElement.href.split('/').pop();
+        if (handle && !handle.includes('status')) {
+          data.userHandle = handle;
+        }
+      }
+
+      // Extract follower/following counts using specific link selectors
+      const followingLink = document.querySelector('a[href*="/following"]');
+      if (followingLink) {
+        const followingText = followingLink.textContent || '';
+        // Extract number from spans within the link
+        const numberSpans = followingLink.querySelectorAll('span');
+        for (const span of numberSpans) {
+          const spanText = span.textContent?.trim() || '';
+          if (spanText && /^\d+(\.\d+)?[KMB]?$/i.test(spanText)) {
+            data.following = parseCount(spanText);
+            break;
+          }
+        }
+      }
+
+      const followersLink = document.querySelector('a[href*="/verified_followers"]');
+      if (followersLink) {
+        const followersText = followersLink.textContent || '';
+        // Extract number from spans within the link
+        const numberSpans = followersLink.querySelectorAll('span');
+        for (const span of numberSpans) {
+          const spanText = span.textContent?.trim() || '';
+          if (spanText && /^\d+(\.\d+)?[KMB]?$/i.test(spanText)) {
+            data.followers = parseCount(spanText);
+            break;
+          }
+        }
+      }
+
+      // Extract post metrics (likes, reposts, etc.)
+      const metrics = {};
+
+      // Find main post div using the special child div
+      const specialDiv = document.querySelector('[data-testid="inline_reply_offscreen"]');
+      const mainPostDiv = specialDiv ? specialDiv.parentElement.querySelector('article') : null;
+
+      // Like count
+      const likeButton = mainPostDiv ? mainPostDiv.querySelector('[data-testid*="like"]') : document.querySelector('[data-testid*="like"]');
+      if (likeButton) {
+        const ariaLabel = likeButton.getAttribute('aria-label') || '';
+        const match = ariaLabel.match(/(\d+(?:\.\d+)?[KMB]?)/);
+        if (match) {
+          metrics.likes = parseCount(match[1]);
+        }
+      }
+
+      // Repost count
+      const repostButton = mainPostDiv ? mainPostDiv.querySelector('[data-testid*="retweet"]') : document.querySelector('[data-testid*="retweet"]');
+      if (repostButton) {
+        const ariaLabel = repostButton.getAttribute('aria-label') || '';
+        const match = ariaLabel.match(/(\d+(?:\.\d+)?[KMB]?)/);
+        if (match) {
+          metrics.reposts = parseCount(match[1]);
+        }
+      }
+
+      // Reply count
+      const replyButton = mainPostDiv ? mainPostDiv.querySelector('[data-testid*="reply"]') : document.querySelector('[data-testid*="reply"]');
+      if (replyButton) {
+        const ariaLabel = replyButton.getAttribute('aria-label') || '';
+        const match = ariaLabel.match(/(\d+(?:\.\d+)?[KMB]?)/);
+        if (match) {
+          metrics.replies = parseCount(match[1]);
+        }
+      }
+
+      // View count
+      const bookElement = mainPostDiv ? mainPostDiv.querySelector('[data-testid*="bookmark"]') : document.querySelector('[data-testid*="bookmark"]');
+      if (bookElement) {
+        const ariaLabel = bookElement.getAttribute('aria-label') || '';
+        const match = ariaLabel.match(/(\d+(?:\.\d+)?[KMB]?)/);
+        if (match) {
+          metrics.bookmarks = parseCount(match[1]);
+        }
+      }
+
+      if (Object.keys(metrics).length > 0) {
+        data.postMetrics = metrics;
+      }
+
+      // Extract profile image
+      const profileImg = mainPostDiv ? mainPostDiv.querySelector('article img') : document.querySelector('img[alt*="Opens profile photo"]');
+
+      if (profileImg?.src) {
+        data.profileImage = profileImg.src;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error extracting page data:', error);
       return null;
     }
-
-    const data = {
-      url: window.location.href,
-      timestamp: new Date().toISOString()
-    };
-
-    // Extract user profile data
-    const userNameElement = document.querySelector('[data-testid="User-Name"]');
-    if (userNameElement) {
-      data.userName = userNameElement.textContent?.trim();
-    }
-
-    const userHandleElement = document.querySelector('[role="link"][href*="/"]');
-    if (userHandleElement?.href) {
-      const handle = userHandleElement.href.split('/').pop();
-      if (handle && !handle.includes('status')) {
-        data.userHandle = handle;
-      }
-    }
-
-    // Extract follower/following counts using specific link selectors
-    const followingLink = document.querySelector('a[href*="/following"]');
-    if (followingLink) {
-      const followingText = followingLink.textContent || '';
-      // Extract number from spans within the link
-      const numberSpans = followingLink.querySelectorAll('span');
-      for (const span of numberSpans) {
-        const spanText = span.textContent?.trim() || '';
-        if (spanText && /^\d+(\.\d+)?[KMB]?$/i.test(spanText)) {
-          data.following = parseCount(spanText);
-          break;
-        }
-      }
-    }
-
-    const followersLink = document.querySelector('a[href*="/verified_followers"]');
-    if (followersLink) {
-      const followersText = followersLink.textContent || '';
-      // Extract number from spans within the link
-      const numberSpans = followersLink.querySelectorAll('span');
-      for (const span of numberSpans) {
-        const spanText = span.textContent?.trim() || '';
-        if (spanText && /^\d+(\.\d+)?[KMB]?$/i.test(spanText)) {
-          data.followers = parseCount(spanText);
-          break;
-        }
-      }
-    }
-
-    // Extract post metrics (likes, reposts, etc.)
-    const metrics = {};
-
-    // Like count
-    const likeButton = document.querySelector('[data-testid*="like"]');
-    if (likeButton) {
-      const ariaLabel = likeButton.getAttribute('aria-label') || '';
-      const match = ariaLabel.match(/(\d+(?:\.\d+)?[KMB]?)/);
-      if (match) {
-        metrics.likes = parseCount(match[1]);
-      }
-    }
-
-    // Repost count
-    const repostButton = document.querySelector('[data-testid*="retweet"]');
-    if (repostButton) {
-      const ariaLabel = repostButton.getAttribute('aria-label') || '';
-      const match = ariaLabel.match(/(\d+(?:\.\d+)?[KMB]?)/);
-      if (match) {
-        metrics.reposts = parseCount(match[1]);
-      }
-    }
-
-    // Reply count
-    const replyButton = document.querySelector('[data-testid*="reply"]');
-    if (replyButton) {
-      const ariaLabel = replyButton.getAttribute('aria-label') || '';
-      const match = ariaLabel.match(/(\d+(?:\.\d+)?[KMB]?)/);
-      if (match) {
-        metrics.replies = parseCount(match[1]);
-      }
-    }
-
-    // View count
-    const viewElement = document.querySelector('[data-testid*="view"]');
-    if (viewElement) {
-      const ariaLabel = viewElement.getAttribute('aria-label') || '';
-      const match = ariaLabel.match(/(\d+(?:\.\d+)?[KMB]?)/);
-      if (match) {
-        metrics.views = parseCount(match[1]);
-      }
-    }
-
-    if (Object.keys(metrics).length > 0) {
-      data.postMetrics = metrics;
-    }
-
-    // Extract profile image
-    const profileImg = document.querySelector('article img[alt*="profile"]') ||
-                      document.querySelector('[data-testid="Tweet-User-Avatar"] img') ||
-                      document.querySelector('[data-testid="User-Profile-Avatar"] img');
-
-    if (profileImg?.src) {
-      data.profileImage = profileImg.src;
-    }
-
-    return data;
-  } catch (error) {
-    console.error('Error extracting page data:', error);
-    return null;
-  }
-}
-
-function parseCount(text) {
-  if (!text) return 0;
-
-  // Remove commas and handle K/M/B suffixes
-  const cleaned = text.replace(/,/g, '').toUpperCase();
-
-  if (cleaned.endsWith('K')) {
-    return Math.round(parseFloat(cleaned.slice(0, -1)) * 1000);
-  } else if (cleaned.endsWith('M')) {
-    return Math.round(parseFloat(cleaned.slice(0, -1)) * 1000000);
-  } else if (cleaned.endsWith('B')) {
-    return Math.round(parseFloat(cleaned.slice(0, -1)) * 1000000000);
   }
 
-  return parseInt(cleaned) || 0;
-}
 
-// Listen for messages from the extension
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'EXTRACT_PAGE_DATA') {
-    const data = extractPageData();
-    sendResponse({ data });
-  }
-});
-
-// Also send data proactively when DOM changes (for dynamic content)
-let lastUrl = window.location.href;
-new MutationObserver(() => {
-  if (window.location.href !== lastUrl) {
-    lastUrl = window.location.href;
-    // Page changed, could send update if needed
-  }
-}).observe(document.body, { childList: true, subtree: true });
-
-// ===== INITIALIZATION =====
-
-// Initialize both functionalities
-function init() {
-  // Initialize space tracking
-  initSpaceTracking();
 
   // Listen for messages from the extension
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -548,39 +528,63 @@ function init() {
     }
   });
 
-  // Listen for report button clicks
-  window.addEventListener('message', (event) => {
-    if (event.data.type === 'XEET_REPORT_CLICK') {
-      if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
-        try {
-          chrome.runtime.sendMessage({
-            type: 'OPEN_REPORT_TAB'
-          });
-        } catch (error) {
-          console.log('Failed to send report message:', error);
-        }
-      } else {
-        console.log('Chrome extension APIs not available or incorrect extension ID, cannot open report tab');
+  // Also send data proactively when DOM changes (for dynamic content)
+  let lastUrl = window.location.href;
+  new MutationObserver(() => {
+    if (window.location.href !== lastUrl) {
+      lastUrl = window.location.href;
+      // Page changed, could send update if needed
+    }
+  }).observe(document.body, { childList: true, subtree: true });
+
+  // ===== INITIALIZATION =====
+
+  // Initialize both functionalities
+  function init() {
+    // Initialize space tracking
+    initSpaceTracking();
+
+    // Listen for messages from the extension
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      if (request.action === 'EXTRACT_PAGE_DATA') {
+        const data = extractPageData();
+        sendResponse({ data });
       }
+    });
+
+    // Listen for report button clicks
+    window.addEventListener('message', (event) => {
+      if (event.data.type === 'XEET_REPORT_CLICK') {
+        if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
+          try {
+            chrome.runtime.sendMessage({
+              type: 'OPEN_REPORT_TAB'
+            });
+          } catch (error) {
+            console.log('Failed to send report message:', error);
+          }
+        } else {
+          console.log('Chrome extension APIs not available or incorrect extension ID, cannot open report tab');
+        }
+      }
+    });
+  }
+
+  // Start when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    if (mutationObserver) {
+      mutationObserver.disconnect();
+    }
+    if (currentSpaceSession) {
+      endSpaceSession();
     }
   });
-}
-
-// Start when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}
-
-// Cleanup on page unload
-window.addEventListener('beforeunload', () => {
-  if (mutationObserver) {
-    mutationObserver.disconnect();
-  }
-  if (currentSpaceSession) {
-    endSpaceSession();
-  }
-});
 
 })();

@@ -11,7 +11,10 @@ module.exports = {
       fontFamily: {
         sans: ["var(--font-inter)", "Arial", "Helvetica", "sans-serif"],
         "abc-favorit": ["var(--font-abc-favorit)", "Arial", "Helvetica", "sans-serif"],
-      }
+      },
+       fontSize: {
+        xs10: "10px"
+      },
     },
   },
   plugins: [],

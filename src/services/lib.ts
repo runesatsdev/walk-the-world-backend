@@ -85,3 +85,37 @@ export const formatTimeAgo = (timestamp: string) => {
     if (diffMins < 60) return `${diffMins}m ago`;
     return `${diffHours}h ago`;
 };
+
+export const isValidPostUrl = (url: string) => {
+  const m = url.match(
+    /^https?:\/\/(?:x\.com|twitter\.com)\/([a-zA-Z0-9_]+)\/status\/(\d{19})$/
+  );
+  return m ? { username: m[1], postId: m[2] } : null;
+};
+
+export const isValidAccountUrl = (url: string) => {
+  const m = url.match(/^https?:\/\/(?:x\.com|twitter\.com)\/([a-zA-Z0-9_]+)$/);
+  if (!m) return null;
+
+  const reserved = new Set([
+    "home",
+    "explore",
+    "notifications",
+    "messages",
+    "search",
+    "compose",
+    "i",
+    "settings",
+  ]);
+  const username = m[1];
+
+  return reserved.has(username) ? null : { username };
+};
+
+export const snapFormatCount = (n: number | null) => {
+  if (n === null) return "--";
+  if (n < 1000) return n;
+  if (n < 1_000_000) return (n / 1000).toFixed(1) + "K";
+  return (n / 1_000_000).toFixed(1) + "M";
+};
+
