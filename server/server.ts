@@ -86,6 +86,15 @@ interface Reward {
   claimed?: boolean;
 }
 
+interface UserRewards {
+  userId: string;
+  totalAccumulated: number;
+  dailyEarned: { [date: string]: number }; // date in YYYY-MM-DD
+  lastRewardDate: string | null; // YYYY-MM-DD
+  currentStreak: number;
+  dailyCap: number;
+}
+
 interface Report {
   id: string;
   reporterId: string;
@@ -145,6 +154,7 @@ let feedback: FeedbackEntry[] = [];
 let reports: Report[] = [];
 let rewards: Reward[] = [];
 let spaceTracking: SpaceTrackingEntry[] = [];
+let userRewards: { [userId: string]: UserRewards } = {};
 
 // Mock signals data (candidate posts/accounts for feedback)
 const mockSignals = [
@@ -188,6 +198,64 @@ const config = {
     report: 0.1
   }
 };
+
+// Helper functions
+function getTodayDate(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+function getUserRewards(userId: string): UserRewards {
+  if (!userRewards[userId]) {
+    userRewards[userId] = {
+      userId,
+      totalAccumulated: 0,
+      dailyEarned: {},
+      lastRewardDate: null,
+      currentStreak: 0,
+      dailyCap: config.dailyRewardCap
+    };
+  }
+  return userRewards[userId];
+}
+
+function seededRandom(seed: string): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    const char = seed.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash) / 2147483647; // Normalize to 0-1
+}
+
+function shouldGrantReward(userId: string, taskType: string, date: string): boolean {
+  const seed = `${userId}-${taskType}-${date}`;
+  const random = seededRandom(seed);
+  const probability = config.rewardProbabilities[taskType as keyof typeof config.rewardProbabilities] || 0;
+  return random < probability;
+}
+
+function updateUserRewards(userId: string, amount: number, date: string) {
+  const userReward = getUserRewards(userId);
+  userReward.totalAccumulated += amount;
+  userReward.dailyEarned[date] = (userReward.dailyEarned[date] || 0) + amount;
+
+  // Update streak
+  if (userReward.lastRewardDate) {
+    const lastDate = new Date(userReward.lastRewardDate);
+    const currentDate = new Date(date);
+    const diffTime = currentDate.getTime() - lastDate.getTime();
+    const diffDays = diffTime / (1000 * 3600 * 24);
+    if (diffDays === 1) {
+      userReward.currentStreak += 1;
+    } else if (diffDays > 1) {
+      userReward.currentStreak = 1;
+    }
+  } else {
+    userReward.currentStreak = 1;
+  }
+  userReward.lastRewardDate = date;
+}
 
 // API Endpoints
 
@@ -293,24 +361,38 @@ app.post('/api/v1/extension/feedback', authenticateToken, (req: express.Request,
 
   feedback.push(feedbackEntry);
 
-  // Mock reward logic
-  const rewardGranted = Math.random() < config.rewardProbabilities.feedback;
-  if (rewardGranted) {
-    const reward: Reward = {
-      id: uuidv4(),
-      userId,
-      amount: Math.floor(Math.random() * 10) + 1,
-      reason: 'feedback',
-      timestamp: new Date().toISOString()
-    };
-    rewards.push(reward);
+  // Updated reward logic with daily cap and pseudo-random
+  const today = getTodayDate();
+  const userReward = getUserRewards(userId);
+  const dailyEarned = userReward.dailyEarned[today] || 0;
+
+  let rewardGranted = false;
+  let rewardAmount = 0;
+
+  if (dailyEarned < userReward.dailyCap && shouldGrantReward(userId, 'feedback', today)) {
+    rewardAmount = Math.floor(Math.random() * 10) + 1;
+    if (dailyEarned + rewardAmount > userReward.dailyCap) {
+      rewardAmount = userReward.dailyCap - dailyEarned;
+    }
+    if (rewardAmount > 0) {
+      rewardGranted = true;
+      const reward: Reward = {
+        id: uuidv4(),
+        userId,
+        amount: rewardAmount,
+        reason: 'feedback',
+        timestamp: new Date().toISOString()
+      };
+      rewards.push(reward);
+      updateUserRewards(userId, rewardAmount, today);
+    }
   }
 
   res.json({
     success: true,
     feedbackId: feedbackEntry.id,
     rewardGranted,
-    rewardAmount: rewardGranted ? rewards[rewards.length - 1].amount : 0
+    rewardAmount
   });
 });
 
@@ -380,6 +462,60 @@ app.post('/api/v1/extension/reports', (req: express.Request, res: express.Respon
   });
 });
 
+// GET /api/v1/users/rewards
+app.get('/api/v1/users/rewards', authenticateToken, (req: express.Request, res: express.Response) => {
+  const userId = req.user!.userId;
+  const userReward = getUserRewards(userId);
+  const today = getTodayDate();
+  const dailyEarned = userReward.dailyEarned[today] || 0;
+  const remainingCap = userReward.dailyCap - dailyEarned;
+
+  res.json({
+    userId,
+    totalAccumulated: userReward.totalAccumulated,
+    dailyEarned,
+    dailyCap: userReward.dailyCap,
+    remainingCap,
+    currentStreak: userReward.currentStreak,
+    lastRewardDate: userReward.lastRewardDate
+  });
+});
+
+// POST /api/v1/users/rewards
+app.post('/api/v1/users/rewards', authenticateToken, (req: express.Request, res: express.Response) => {
+  const { amount, reason } = req.body;
+  const userId = req.user!.userId;
+
+  if (!amount || !reason) {
+    return res.status(400).json({ error: 'Missing required fields: amount, reason' });
+  }
+
+  const today = getTodayDate();
+  const userReward = getUserRewards(userId);
+  const dailyEarned = userReward.dailyEarned[today] || 0;
+
+  if (dailyEarned + amount > userReward.dailyCap) {
+    return res.status(400).json({ error: 'Daily cap exceeded' });
+  }
+
+  const reward: Reward = {
+    id: uuidv4(),
+    userId,
+    amount,
+    reason,
+    timestamp: new Date().toISOString()
+  };
+  rewards.push(reward);
+  updateUserRewards(userId, amount, today);
+
+  res.json({
+    success: true,
+    rewardId: reward.id,
+    amount,
+    reason
+  });
+});
+
 // POST /api/v1/extension/spaces/submit
 app.post('/api/v1/extension/spaces/submit', authenticateToken, (req: express.Request, res: express.Response) => {
   const {
@@ -421,20 +557,32 @@ app.post('/api/v1/extension/spaces/submit', authenticateToken, (req: express.Req
 
   spaceTracking.push(spaceEntry);
 
-  // Mock reward logic for eligible spaces
+  // Updated reward logic for eligible spaces
   let rewardGranted = false;
   let rewardAmountGranted = 0;
-  if (eligibleForGrant && Math.random() < config.rewardProbabilities.space) {
-    rewardGranted = true;
-    rewardAmountGranted = rewardAmount || Math.floor(Math.random() * 25) + 1;
-    const reward: Reward = {
-      id: uuidv4(),
-      userId,
-      amount: rewardAmountGranted,
-      reason: 'space',
-      timestamp: new Date().toISOString()
-    };
-    rewards.push(reward);
+  if (eligibleForGrant) {
+    const today = getTodayDate();
+    const userReward = getUserRewards(userId);
+    const dailyEarned = userReward.dailyEarned[today] || 0;
+
+    if (dailyEarned < userReward.dailyCap && shouldGrantReward(userId, 'space', today)) {
+      rewardAmountGranted = rewardAmount || Math.floor(Math.random() * 25) + 1;
+      if (dailyEarned + rewardAmountGranted > userReward.dailyCap) {
+        rewardAmountGranted = userReward.dailyCap - dailyEarned;
+      }
+      if (rewardAmountGranted > 0) {
+        rewardGranted = true;
+        const reward: Reward = {
+          id: uuidv4(),
+          userId,
+          amount: rewardAmountGranted,
+          reason: 'space',
+          timestamp: new Date().toISOString()
+        };
+        rewards.push(reward);
+        updateUserRewards(userId, rewardAmountGranted, today);
+      }
+    }
   }
 
   res.json({

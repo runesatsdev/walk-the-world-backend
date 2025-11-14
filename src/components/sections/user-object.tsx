@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
-// import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy } from "@privy-io/react-auth";
 import { showSuccessToast, showErrorToast } from "../ui/custom-toast";
+import { getUserRewards } from "../../services/api";
+import type { UserRewardsResponse } from "../../services/types";
 
 interface Reward {
   id: string;
@@ -17,7 +19,8 @@ interface Reward {
 }
 
 const UserObject = () => {
-  // const { user } = usePrivy();
+  const { getAccessToken } = usePrivy();
+  const [userRewards, setUserRewards] = useState<UserRewardsResponse | null>(null);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
   const [claimingReward, setClaimingReward] = useState<string | null>(null);
@@ -26,44 +29,60 @@ const UserObject = () => {
     loadRewards();
   }, []);
 
-  const loadRewards = () => {
-    // Load rewards from chrome storage
-    if (chrome?.storage?.local) {
-      chrome.storage.local.get(['rewardHistory'], (result) => {
-        const rewardHistory = result.rewardHistory || [];
-
-        const formattedRewards: Reward[] = rewardHistory.map((reward: any) => {
-          if (reward.type === 'feedback') {
-            return {
-              id: reward.id,
-              type: 'feedback',
-              contentType: reward.contentType,
-              title: reward.title,
-              username: reward.username,
-              amount: reward.rewardAmount,
-              earnedAt: reward.submittedAt,
-              claimed: true, // Feedback rewards are auto-claimed
-              claimedAt: reward.submittedAt
-            };
-          } else {
-            // Space reward
-            return {
-              id: reward.id || `space_${Date.now()}`,
-              type: 'space',
-              spaceId: reward.spaceId,
-              spaceTitle: reward.title,
-              amount: reward.rewardAmount,
-              earnedAt: reward.timestamp || reward.earnedAt,
-              claimed: reward.claimed || false,
-              claimedAt: reward.claimedAt
-            };
-          }
-        });
-
-        setRewards(formattedRewards);
+  const loadRewards = async () => {
+    try {
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
         setLoading(false);
-      });
-    } else {
+        return;
+      }
+
+      const rewardsData = await getUserRewards(accessToken);
+      if (rewardsData) {
+        setUserRewards(rewardsData);
+      }
+
+      // Still load from chrome storage for historical rewards display
+      if (chrome?.storage?.local) {
+        chrome.storage.local.get(['rewardHistory'], (result) => {
+          const rewardHistory = result.rewardHistory || [];
+
+          const formattedRewards: Reward[] = rewardHistory.map((reward: any) => {
+            if (reward.type === 'feedback') {
+              return {
+                id: reward.id,
+                type: 'feedback',
+                contentType: reward.contentType,
+                title: reward.title,
+                username: reward.username,
+                amount: reward.rewardAmount,
+                earnedAt: reward.submittedAt,
+                claimed: true, // Feedback rewards are auto-claimed
+                claimedAt: reward.submittedAt
+              };
+            } else {
+              // Space reward
+              return {
+                id: reward.id || `space_${Date.now()}`,
+                type: 'space',
+                spaceId: reward.spaceId,
+                spaceTitle: reward.title,
+                amount: reward.rewardAmount,
+                earnedAt: reward.timestamp || reward.earnedAt,
+                claimed: reward.claimed || false,
+                claimedAt: reward.claimedAt
+              };
+            }
+          });
+
+          setRewards(formattedRewards);
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error loading rewards:', error);
       setLoading(false);
     }
   };
@@ -96,9 +115,13 @@ const UserObject = () => {
     }
   };
 
-  const totalEarned = rewards.reduce((sum, reward) => sum + reward.amount, 0);
-  const totalClaimed = rewards.filter(r => r.claimed).reduce((sum, reward) => sum + reward.amount, 0);
-  const availableToClaim = rewards.filter(r => !r.claimed).reduce((sum, reward) => sum + reward.amount, 0);
+  const totalEarned = userRewards ? userRewards.totalAccumulated : rewards.reduce((sum, reward) => sum + reward.amount, 0);
+  // const totalClaimed = rewards.filter(r => r.claimed).reduce((sum, reward) => sum + reward.amount, 0);
+  // const availableToClaim = rewards.filter(r => !r.claimed).reduce((sum, reward) => sum + reward.amount, 0);
+  const dailyEarned = userRewards ? userRewards.dailyEarned : 0;
+  const dailyCap = userRewards ? userRewards.dailyCap : 100;
+  const remainingCap = userRewards ? userRewards.remainingCap : dailyCap - dailyEarned;
+  const currentStreak = userRewards ? userRewards.currentStreak : 0;
 
   if (loading) {
     return (
@@ -119,18 +142,22 @@ const UserObject = () => {
       </p>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-blue-50 p-3 rounded-lg text-center">
           <div className="text-2xl font-bold text-blue-600">{totalEarned}</div>
-          <div className="text-sm text-gray-600">Total Earned</div>
+          <div className="text-sm text-gray-600">Accumulated Xeets</div>
+        </div>
+        <div className="bg-purple-50 p-3 rounded-lg text-center">
+          <div className="text-2xl font-bold text-purple-600">{currentStreak}</div>
+          <div className="text-sm text-gray-600">Current Streak</div>
+        </div>
+        <div className="bg-orange-50 p-3 rounded-lg text-center">
+          <div className="text-2xl font-bold text-orange-600">{dailyEarned}/{dailyCap}</div>
+          <div className="text-sm text-gray-600">Daily Progress</div>
         </div>
         <div className="bg-green-50 p-3 rounded-lg text-center">
-          <div className="text-2xl font-bold text-green-600">{totalClaimed}</div>
-          <div className="text-sm text-gray-600">Claimed</div>
-        </div>
-        <div className="bg-yellow-50 p-3 rounded-lg text-center">
-          <div className="text-2xl font-bold text-yellow-600">{availableToClaim}</div>
-          <div className="text-sm text-gray-600">Available</div>
+          <div className="text-2xl font-bold text-green-600">{remainingCap}</div>
+          <div className="text-sm text-gray-600">Remaining Cap</div>
         </div>
       </div>
 

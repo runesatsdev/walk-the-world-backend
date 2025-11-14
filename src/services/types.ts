@@ -76,3 +76,20 @@ export interface SpaceTrackingResponse {
   rewardGranted: boolean;
   rewardAmount: number;
 }
+
+export interface UserRewardsResponse {
+  userId: string;
+  totalAccumulated: number;
+  dailyEarned: number;
+  dailyCap: number;
+  remainingCap: number;
+  currentStreak: number;
+  lastRewardDate: string | null;
+}
+
+export interface SubmitRewardResponse {
+  success: boolean;
+  rewardId: string;
+  amount: number;
+  reason: string;
+}

@@ -1,6 +1,6 @@
 // API service for backend communication
 import axios from 'axios';
-import type { TaskData, FeedbackResponse, ClaimResponse, AdminReportRequest, AdminReportResponse, SpaceTrackingRequest, SpaceTrackingResponse } from './types';
+import type { TaskData, FeedbackResponse, ClaimResponse, AdminReportRequest, AdminReportResponse, SpaceTrackingRequest, SpaceTrackingResponse, UserRewardsResponse, SubmitRewardResponse } from './types';
 
 const API_BASE_URL = 'http://localhost:5000/api/v1/extension';
 
@@ -107,6 +107,44 @@ export const submitSpaceTracking = async (accessToken: string, spaceData: SpaceT
     return response.data;
   } catch (error) {
     console.error('Error submitting space tracking:', error);
+    return null;
+  }
+};
+
+export const getUserRewards = async (accessToken: string): Promise<UserRewardsResponse | null> => {
+  try {
+    const response = await axios({
+      method: 'get',
+      url: 'http://localhost:5000/api/v1/users/rewards',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching user rewards:', error);
+    return null;
+  }
+};
+
+export const submitReward = async (accessToken: string, amount: number, reason: string): Promise<SubmitRewardResponse | null> => {
+  try {
+    const response = await axios({
+      method: 'post',
+      url: 'http://localhost:5000/api/v1/users/rewards',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      data: {
+        amount,
+        reason
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Error submitting reward:', error);
     return null;
   }
 };
