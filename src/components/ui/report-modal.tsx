@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { showErrorToast } from "./custom-toast";
 
 interface ReportModalProps {
@@ -79,15 +80,23 @@ const ReportModal = ({ isOpen, onClose, onSubmit, isSubmitting }: ReportModalPro
         };
     }, [isOpen, isSubmitting]);
 
-    if (!isOpen) return null;
-
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50">
-            <div
-                className={`bg-white rounded-t-2xl w-full max-w-md mx-4 transform transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'
-                    }`}
-                style={{ maxHeight: '90vh', overflowY: 'auto' }}
-            >
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div
+                    className="fixed inset-0 z-50 flex items-end justify-center bg-white bg-opacity-20"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                >
+                    <motion.div
+                        className="bg-white rounded-t-2xl w-full max-w-md mx-4"
+                        style={{ maxHeight: '90vh', overflowY: 'auto' }}
+                        initial={{ y: "100%" }}
+                        animate={{ y: 0 }}
+                        exit={{ y: "100%" }}
+                        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                    >
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-200">
                     <h2 className="text-lg font-semibold text-gray-900">Report Content</h2>
@@ -188,8 +197,10 @@ const ReportModal = ({ isOpen, onClose, onSubmit, isSubmitting }: ReportModalPro
                         )}
                     </button>
                 </div>
-            </div>
-        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 };
 
